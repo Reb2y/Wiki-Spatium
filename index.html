@@ -48,7 +48,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ВЫБОРА ЦВЕТА СВЕЧЕНИЯ -->
+    <!-- МОДАЛЬНОЕ ОКНО ВЫБОРА ЦВЕТА СВЕЧЕНИЯ (ДЛЯ ПК И ДЛЯ ВКЛАДКИ НА МОБИЛЬНЫХ) -->
     <div class="color-picker-overlay" id="colorPickerModal" onclick="closeColorPicker(event)">
         <div class="color-picker-modal">
             <div class="color-picker-header">
@@ -62,6 +62,69 @@
             <button class="reset-color-btn" onclick="resetGlowColor()">
                 <i class="fa-solid fa-rotate-left"></i> Сбросить цвет
             </button>
+        </div>
+    </div>
+
+    <!-- ОБЩЕЕ МОДАЛЬНОЕ ОКНО НАСТРОЕК (ДЛЯ МОБИЛЬНОЙ ВЕРСИИ) -->
+    <div class="mobile-settings-overlay" id="mobileSettingsModal" onclick="closeMobileSettingsModal(event)">
+        <div class="mobile-settings-modal">
+            <div class="mobile-settings-header">
+                <h3><i class="fa-solid fa-sliders"></i> Настройки</h3>
+                <button class="close-picker-btn" onclick="toggleMobileSettingsModal(false)">&times;</button>
+            </div>
+            
+            <div class="mobile-settings-body">
+                <!-- Секция 1: Тема -->
+                <div class="settings-section">
+                    <div class="settings-label">
+                        <span><i class="fa-solid fa-circle-half-stroke"></i> Внешний вид</span>
+                    </div>
+                    <div class="settings-row">
+                        <span>Тема оформления</span>
+                        <button class="setting-action-btn" id="mobileThemeToggleBtn" onclick="toggleTheme()">
+                            <i class="fa-solid fa-moon"></i> <span id="mobileThemeStatus">Тёмная</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Секция 2: Безопасность -->
+                <div class="settings-section">
+                    <div class="settings-label">
+                        <span><i class="fa-solid fa-shield-halved"></i> Безопасность</span>
+                    </div>
+                    <div class="settings-row">
+                        <span>Безопасный режим (без вспышек)</span>
+                        <button class="setting-action-btn" id="mobileSafeToggleBtn" onclick="toggleEpilepsyMode()">
+                            <i class="fa-solid fa-shield-halved"></i> <span id="mobileSafeStatus">Выкл</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Секция 3: Настройки свечения -->
+                <div class="settings-section">
+                    <div class="settings-label">
+                        <span><i class="fa-solid fa-wand-magic-sparkles"></i> Фоновое свечение</span>
+                    </div>
+                    <div class="settings-row">
+                        <span>Состояние свечения</span>
+                        <button class="setting-action-btn" id="mobileGlowToggleBtn" onclick="toggleGlowEnabled()">
+                            <i class="fa-solid fa-power-off"></i> <span id="mobileGlowStatus">Вкл</span>
+                        </button>
+                    </div>
+                    <div class="settings-row">
+                        <span>Позиция волны</span>
+                        <button class="setting-action-btn" onclick="toggleGlowPosition()">
+                            <i class="fa-solid fa-arrows-left-right"></i> <span id="mobileGlowPosStatus">Слева</span>
+                        </button>
+                    </div>
+                    <div class="settings-row">
+                        <span>Палитра цветов</span>
+                        <button class="setting-action-btn primary" onclick="openColorPickerFromMobile()">
+                            <i class="fa-solid fa-palette"></i> Выбрать цвет
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -94,24 +157,32 @@
                 <i class="fa-solid fa-magnifying-glass"></i>
             </div>
 
+            <!-- ЭЛЕМЕНТЫ ТОЛЬКО ДЛЯ ПК -->
+            <div class="desktop-only-controls">
+                <!-- Кнопка свечения -->
+                <button class="glow-toggle-btn" id="glowToggleBtn" title="ЛКМ: Сменить позицию | Зажатие: Цвет | ПКМ: Вкл/Выкл">
+                    <i class="fa-solid fa-circle-half-stroke glow-icon" id="glowIcon"></i>
+                </button>
+
+                <!-- Безопасный режим -->
+                <button class="safe-toggle-btn" id="safeToggleBtn" onclick="toggleEpilepsyMode()" title="Переключить безопасный режим">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </button>
+
+                <!-- Тема -->
+                <button class="theme-toggle" id="themeToggleBtn" title="Переключить тему">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+            </div>
+
             <!-- Кнопка поиска для мобилок -->
             <button class="mobile-search-toggle" id="mobileSearchToggleBtn" onclick="toggleMobileSearch()" title="Поиск">
                 <i class="fa-solid fa-magnifying-glass"></i>
             </button>
-            
-            <!-- Кнопка свечения -->
-            <button class="glow-toggle-btn" id="glowToggleBtn" title="ЛКМ: Сменить позицию | Зажатие: Цвет | ПКМ: Вкл/Выкл">
-                <i class="fa-solid fa-circle-half-stroke glow-icon" id="glowIcon"></i>
-            </button>
 
-            <!-- Безопасный режим -->
-            <button class="safe-toggle-btn" id="safeToggleBtn" onclick="toggleEpilepsyMode()" title="Переключить безопасный режим">
-                <i class="fa-solid fa-shield-halved"></i>
-            </button>
-
-            <!-- Тема -->
-            <button class="theme-toggle" id="themeToggleBtn" title="Переключить тему">
-                <i class="fa-solid fa-moon"></i>
+            <!-- ЕДИНАЯ КНОПКА НАСТРОЕК ТОЛЬКО ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ -->
+            <button class="mobile-settings-toggle" id="mobileSettingsToggleBtn" onclick="toggleMobileSettingsModal(true)" title="Настройки">
+                <i class="fa-solid fa-gear"></i>
             </button>
         </div>
 

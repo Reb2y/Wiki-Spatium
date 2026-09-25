@@ -189,7 +189,13 @@ body.epilepsy-safe .glow-blob {
 }
 
 /* ==================== КНОПКИ УПРАВЛЕНИЯ В ШАПКЕ ==================== */
-.glow-toggle-btn, .safe-toggle-btn, .theme-toggle, .mobile-search-toggle {
+.desktop-only-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.glow-toggle-btn, .safe-toggle-btn, .theme-toggle, .mobile-search-toggle, .mobile-settings-toggle {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -211,13 +217,13 @@ body.epilepsy-safe .glow-blob {
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
 }
 
-.glow-toggle-btn:hover, .safe-toggle-btn:hover, .theme-toggle:hover, .mobile-search-toggle:hover {
+.glow-toggle-btn:hover, .safe-toggle-btn:hover, .theme-toggle:hover, .mobile-search-toggle:hover, .mobile-settings-toggle:hover {
     color: var(--text-primary);
     border-color: var(--text-muted);
     background: var(--bg-surface-hover);
 }
 
-.glow-toggle-btn:active, .safe-toggle-btn:active, .theme-toggle:active, .mobile-search-toggle:active {
+.glow-toggle-btn:active, .safe-toggle-btn:active, .theme-toggle:active, .mobile-search-toggle:active, .mobile-settings-toggle:active {
     transform: scale(0.92);
 }
 
@@ -235,7 +241,7 @@ body.epilepsy-safe .safe-toggle-btn {
     box-shadow: 0 0 10px rgba(72, 187, 120, 0.2);
 }
 
-.mobile-search-toggle {
+.mobile-search-toggle, .mobile-settings-toggle {
     display: none;
 }
 
@@ -349,6 +355,122 @@ body.epilepsy-safe .safe-toggle-btn {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
+}
+
+/* ==================== МОБИЛЬНОЕ ЕДИНОЕ ОКНО НАСТРОЕК ==================== */
+.mobile-settings-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100004;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.mobile-settings-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.mobile-settings-modal {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    max-width: 420px;
+    width: 100%;
+    padding: 1.25rem;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    transform: translateY(20px);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.mobile-settings-overlay.active .mobile-settings-modal {
+    transform: translateY(0);
+}
+
+.mobile-settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.mobile-settings-header h3 {
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mobile-settings-body {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.settings-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-base);
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    font-size: 0.875rem;
+    gap: 0.5rem;
+}
+
+.setting-action-btn {
+    background: var(--bg-surface-hover);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.4rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.825rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.setting-action-btn.active {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+}
+
+.setting-action-btn.primary {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-color: var(--accent);
 }
 
 /* ==================== МОДАЛЬНОЕ ОКНО ПРЕДУПРЕЖДЕНИЯ ==================== */
@@ -1029,11 +1151,19 @@ main.content {
     display: flex;
     align-items: center;
     gap: 0.6rem;
+    overflow: hidden;
+}
+
+.article-list-item .title-group span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .article-list-item i {
     color: var(--text-muted);
     font-size: 0.9rem;
+    flex-shrink: 0;
 }
 
 .article-list-item span {
@@ -1044,6 +1174,8 @@ main.content {
 .article-list-item .date {
     font-size: 0.8rem;
     color: var(--text-muted);
+    flex-shrink: 0;
+    margin-left: 0.5rem;
 }
 
 /* ==================== СТРАНИЦА СТАТЬИ ==================== */
@@ -1073,6 +1205,12 @@ main.content {
     border-bottom: 1px solid var(--border-color);
 }
 
+.article-header-flex {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
 .article-header h1 {
     font-size: 2rem;
     font-weight: 700;
@@ -1098,6 +1236,8 @@ main.content {
     font-size: 1rem;
     color: var(--text-primary);
     line-height: 1.7;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .wiki-body h2 {
@@ -1175,6 +1315,7 @@ pre {
     margin: 1rem 0;
     border: 1px solid var(--border-color);
     -webkit-overflow-scrolling: touch;
+    max-width: 100%;
 }
 
 pre code {
@@ -1182,6 +1323,8 @@ pre code {
     padding: 0;
     border: none;
     color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-all;
 }
 
 /* Обортка для мобильного скролла таблиц */
@@ -1198,7 +1341,7 @@ pre code {
     width: 100%;
     border-collapse: collapse;
     background: var(--bg-surface);
-    min-width: 480px;
+    min-width: 420px;
 }
 
 .wiki-table th, .wiki-table td {
@@ -1260,17 +1403,38 @@ pre code {
     padding: 1.1rem;
     border-radius: 8px;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.search-result-card .card-content {
+    flex: 1;
+    min-width: 0;
 }
 
 .search-result-card h3 {
     font-size: 1.05rem;
     color: var(--accent);
-    margin-bottom: 0.25rem;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .search-result-card p {
     color: var(--text-secondary);
     font-size: 0.875rem;
+    margin: 0.25rem 0 0 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-result-card .card-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.4rem;
 }
 
 .no-results {
@@ -1285,7 +1449,7 @@ pre code {
     display: block;
 }
 
-/* ==================== АДАПТИВНОСТЬ ПОД МОБИЛКИИ ПЛАНШЕТЫ ==================== */
+/* ==================== АДАПТИВНОСТЬ ПОД МОБИЛКИ И ПЛАНШЕТЫ ==================== */
 @media (max-width: 992px) {
     .article-container {
         grid-template-columns: 1fr;
@@ -1300,11 +1464,11 @@ pre code {
 
 @media (max-width: 768px) {
     header {
-        padding: 0 0.85rem;
+        padding: 0 0.75rem;
     }
 
     .header-left {
-        gap: 0.75rem;
+        gap: 0.5rem;
     }
 
     .mobile-menu-btn {
@@ -1312,7 +1476,7 @@ pre code {
     }
 
     .logo-img {
-        height: 28px;
+        height: 26px;
     }
 
     .nav-btn span {
@@ -1336,7 +1500,12 @@ pre code {
         display: none;
     }
 
-    .mobile-search-toggle {
+    /* На мобилках скрываем раздельные кнопки ПК и показываем единую кнопку настроек */
+    .desktop-only-controls {
+        display: none;
+    }
+
+    .mobile-search-toggle, .mobile-settings-toggle {
         display: flex;
     }
 
@@ -1364,15 +1533,15 @@ pre code {
     }
 
     .hero {
-        padding: 1.75rem 1rem;
+        padding: 1.5rem 0.85rem;
     }
 
     .hero h1 {
-        font-size: 1.75rem;
+        font-size: 1.6rem;
     }
 
     .hero p {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
     }
 
     .categories-grid {
@@ -1380,14 +1549,14 @@ pre code {
         gap: 0.85rem;
     }
 
-    .article-header {
+    .article-header-flex {
         flex-direction: column;
         align-items: flex-start !important;
         gap: 0.75rem !important;
     }
 
     .article-header h1 {
-        font-size: 1.6rem;
+        font-size: 1.5rem;
     }
 
     .article-meta {
@@ -1397,11 +1566,15 @@ pre code {
 }
 
 @media (max-width: 480px) {
-    .header-right {
-        gap: 0.35rem;
+    header {
+        padding: 0 0.5rem;
     }
 
-    .glow-toggle-btn, .safe-toggle-btn, .theme-toggle, .mobile-search-toggle {
+    .header-right {
+        gap: 0.3rem;
+    }
+
+    .glow-toggle-btn, .safe-toggle-btn, .theme-toggle, .mobile-search-toggle, .mobile-settings-toggle {
         width: 32px;
         height: 32px;
         font-size: 0.85rem;
@@ -1414,5 +1587,13 @@ pre code {
     .color-grid {
         grid-template-columns: repeat(4, 1fr);
         gap: 0.5rem;
+    }
+
+    .wiki-table {
+        font-size: 0.85rem;
+    }
+
+    .wiki-table th, .wiki-table td {
+        padding: 0.5rem 0.65rem;
     }
 }

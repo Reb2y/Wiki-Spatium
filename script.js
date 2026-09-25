@@ -333,6 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initGlowButtonEvents();
     renderSidebar();
     renderColorGrid();
+    updateMobileSettingsUI();
     handleRoute();
 
     // Открытие / закрытие мобильного меню
@@ -344,7 +345,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', toggleMobileSidebar);
     if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleMobileSidebar);
 
-    document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);
+    const desktopThemeBtn = document.getElementById('themeToggleBtn');
+    if (desktopThemeBtn) desktopThemeBtn.addEventListener('click', toggleTheme);
 });
 
 function toggleMobileSidebar() {
@@ -384,6 +386,7 @@ function initGlowState() {
         container.classList.remove('glow-disabled');
         document.body.classList.remove('glow-off');
     }
+    updateMobileSettingsUI();
 }
 
 function toggleGlowEnabled() {
@@ -401,6 +404,7 @@ function toggleGlowPosition() {
     localStorage.setItem('spatium_glow_position', nextPos);
     
     applyGlowPositionClass(nextPos);
+    updateMobileSettingsUI();
 }
 
 function applyGlowPositionClass(pos) {
@@ -408,12 +412,13 @@ function applyGlowPositionClass(pos) {
     document.body.classList.add(`glow-${pos}`);
 }
 
-/* ==================== ОБРАБОТЧИКИ ПКМ / ЗАЖАТИЯ ==================== */
+/* ==================== ОБРАБОТЧИКИ ПКМ / ЗАЖАТИЯ ДЛЯ ПК ==================== */
 let holdTimer = null;
 let isHoldActionTriggered = false;
 
 function initGlowButtonEvents() {
     const btn = document.getElementById('glowToggleBtn');
+    if (!btn) return;
 
     btn.addEventListener('contextmenu', (e) => {
         e.preventDefault();
@@ -490,6 +495,7 @@ function resetGlowColor() {
 
 function toggleColorPickerModal(show) {
     const modal = document.getElementById('colorPickerModal');
+    if (!modal) return;
     if (show) modal.classList.add('active');
     else modal.classList.remove('active');
 }
@@ -516,6 +522,75 @@ function renderColorGrid() {
     }).join('');
 }
 
+/* ==================== ЕДИНОЕ МОДАЛЬНОЕ ОКНО НАСТРОЕК (МОБИЛЬНАЯ ВЕРСИЯ) ==================== */
+function toggleMobileSettingsModal(show) {
+    const modal = document.getElementById('mobileSettingsModal');
+    if (!modal) return;
+    if (show) {
+        updateMobileSettingsUI();
+        modal.classList.add('active');
+    } else {
+        modal.classList.remove('active');
+    }
+}
+
+function closeMobileSettingsModal(e) {
+    if (e.target.id === 'mobileSettingsModal') {
+        toggleMobileSettingsModal(false);
+    }
+}
+
+function openColorPickerFromMobile() {
+    toggleMobileSettingsModal(false);
+    toggleColorPickerModal(true);
+}
+
+function updateMobileSettingsUI() {
+    // Тема
+    const mobileThemeBtn = document.getElementById('mobileThemeToggleBtn');
+    const mobileThemeStatus = document.getElementById('mobileThemeStatus');
+    if (mobileThemeBtn && mobileThemeStatus) {
+        if (state.theme === 'dark') {
+            mobileThemeBtn.innerHTML = '<i class="fa-solid fa-moon"></i> <span>Тёмная</span>';
+            mobileThemeBtn.classList.remove('active');
+        } else {
+            mobileThemeBtn.innerHTML = '<i class="fa-solid fa-sun"></i> <span>Светлая</span>';
+            mobileThemeBtn.classList.add('active');
+        }
+    }
+
+    // Безопасность
+    const mobileSafeBtn = document.getElementById('mobileSafeToggleBtn');
+    if (mobileSafeBtn) {
+        if (state.epilepsySafe) {
+            mobileSafeBtn.innerHTML = '<i class="fa-solid fa-shield-halved"></i> <span>Вкл</span>';
+            mobileSafeBtn.classList.add('active');
+        } else {
+            mobileSafeBtn.innerHTML = '<i class="fa-solid fa-shield-halved"></i> <span>Выкл</span>';
+            mobileSafeBtn.classList.remove('active');
+        }
+    }
+
+    // Вкл/Выкл свечения
+    const mobileGlowBtn = document.getElementById('mobileGlowToggleBtn');
+    if (mobileGlowBtn) {
+        if (state.glowEnabled) {
+            mobileGlowBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> <span>Вкл</span>';
+            mobileGlowBtn.classList.add('active');
+        } else {
+            mobileGlowBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> <span>Выкл</span>';
+            mobileGlowBtn.classList.remove('active');
+        }
+    }
+
+    // Позиция
+    const posObj = GLOW_POSITIONS.find(p => p.id === state.glowPosition) || GLOW_POSITIONS[0];
+    const mobileGlowPosStatus = document.getElementById('mobileGlowPosStatus');
+    if (mobileGlowPosStatus) {
+        mobileGlowPosStatus.innerText = posObj.name;
+    }
+}
+
 /* ==================== ЭПИЛЕПСИЯ И БЕЗОПАСНЫЙ РЕЖИМ ==================== */
 function initEpilepsyCheck() {
     const isChoiceMade = localStorage.getItem('spatium_epilepsy_safe') !== null;
@@ -540,6 +615,7 @@ function setEpilepsySafeMode(isSafe) {
     }
 
     document.getElementById('epilepsyModal').classList.remove('active');
+    updateMobileSettingsUI();
 }
 
 function toggleEpilepsyMode() {
@@ -580,18 +656,27 @@ function toggleTheme() {
     localStorage.setItem('spatium_theme', state.theme);
     document.documentElement.setAttribute('data-theme', state.theme);
     updateThemeAssets();
+    updateMobileSettingsUI();
 }
 
 function updateThemeAssets() {
     const btn = document.getElementById('themeToggleBtn');
     const logo = document.getElementById('siteLogo');
 
-    if (state.theme === 'dark') {
-        btn.innerHTML = '<i class="fa-solid fa-sun"></i>';
-        logo.src = 'img/spatium_logo_black.png';
-    } else {
-        btn.innerHTML = '<i class="fa-solid fa-moon"></i>';
-        logo.src = 'img/spatium_logo_white.png';
+    if (btn) {
+        if (state.theme === 'dark') {
+            btn.innerHTML = '<i class="fa-solid fa-sun"></i>';
+        } else {
+            btn.innerHTML = '<i class="fa-solid fa-moon"></i>';
+        }
+    }
+
+    if (logo) {
+        if (state.theme === 'dark') {
+            logo.src = 'img/spatium_logo_black.png';
+        } else {
+            logo.src = 'img/spatium_logo_white.png';
+        }
     }
 }
 
@@ -754,12 +839,12 @@ function renderCategoryPage(container, categoryId) {
     }
 
     let articlesHtml = articles.length > 0 ? articles.map(a => `
-        <div class="search-result-card" onclick="navigateTo('article', '${a.id}')" style="display: flex; align-items: center; gap: 1rem;">
+        <div class="search-result-card" onclick="navigateTo('article', '${a.id}')">
             ${getArticleMediaHtml(a, 48)}
-            <div>
-                <h3 style="margin: 0;">${a.title}</h3>
-                <p style="margin: 0.25rem 0 0 0;">${a.subtitle}</p>
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">
+            <div class="card-content">
+                <h3>${a.title}</h3>
+                <p>${a.subtitle}</p>
+                <div class="card-date">
                     Обновлено: ${a.updatedAt}
                 </div>
             </div>
@@ -802,7 +887,7 @@ function renderArticlePage(container, articleId) {
                     <span>${article.title}</span>
                 </div>
 
-                <div class="article-header" style="display: flex; align-items: center; gap: 1.25rem;">
+                <div class="article-header article-header-flex">
                     ${getArticleMediaHtml(article, 64)}
                     <div>
                         <h1 style="margin: 0;">${article.title}</h1>
@@ -835,7 +920,8 @@ function generateTOC() {
 
     const headings = wikiBody.querySelectorAll('h2');
     if (headings.length === 0) {
-        document.querySelector('.toc-sidebar').style.display = 'none';
+        const tocSidebar = document.querySelector('.toc-sidebar');
+        if (tocSidebar) tocSidebar.style.display = 'none';
         return;
     }
 
@@ -860,11 +946,11 @@ function renderSearchPage(container, query) {
     let resultsHtml = '';
     if (results.length > 0) {
         resultsHtml = results.map(a => `
-            <div class="search-result-card" onclick="navigateTo('article', '${a.id}')" style="display: flex; align-items: center; gap: 1rem;">
+            <div class="search-result-card" onclick="navigateTo('article', '${a.id}')">
                 ${getArticleMediaHtml(a, 40)}
-                <div>
-                    <h3 style="margin: 0;">${a.title}</h3>
-                    <p style="margin: 0.25rem 0 0 0;">${a.subtitle}</p>
+                <div class="card-content">
+                    <h3>${a.title}</h3>
+                    <p>${a.subtitle}</p>
                 </div>
             </div>
         `).join('');
