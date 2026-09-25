@@ -306,11 +306,16 @@ const GLOW_COLORS = [
     { name: "Белоснежный Глянцевый", hex: "#ffffff", rgb: "255, 255, 255" }
 ];
 
+/* ==================== ПРОВЕРКА МОБИЛЬНОГО УСТРОЙСТВА ==================== */
+function isMobileDevice() {
+    return window.innerWidth <= 768;
+}
+
 /* ==================== СОСТОЯНИЕ ПРИЛОЖЕНИЯ ==================== */
 let state = {
     theme: localStorage.getItem('spatium_theme') || 'dark',
     epilepsySafe: localStorage.getItem('spatium_epilepsy_safe') === 'true',
-    glowPosition: localStorage.getItem('spatium_glow_position') || 'left',
+    glowPosition: isMobileDevice() ? 'center' : (localStorage.getItem('spatium_glow_position') || 'left'),
     glowEnabled: localStorage.getItem('spatium_glow_enabled') !== 'false',
     customGlowColor: localStorage.getItem('spatium_custom_glow_color') || null,
     currentPage: 'home',
@@ -347,6 +352,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const desktopThemeBtn = document.getElementById('themeToggleBtn');
     if (desktopThemeBtn) desktopThemeBtn.addEventListener('click', toggleTheme);
+
+    window.addEventListener('resize', () => {
+        if (isMobileDevice() && state.glowPosition !== 'center') {
+            state.glowPosition = 'center';
+            applyGlowPositionClass('center');
+        }
+    });
 });
 
 function toggleMobileSidebar() {
@@ -374,7 +386,11 @@ function toggleMobileSearch() {
 
 /* ==================== УПРАВЛЕНИЕ СВЕЧЕНИЕМ ФОНА ==================== */
 function initGlowPosition() {
-    applyGlowPositionClass(state.glowPosition);
+    if (isMobileDevice()) {
+        applyGlowPositionClass('center');
+    } else {
+        applyGlowPositionClass(state.glowPosition);
+    }
 }
 
 function initGlowState() {
@@ -396,6 +412,8 @@ function toggleGlowEnabled() {
 }
 
 function toggleGlowPosition() {
+    if (isMobileDevice()) return;
+
     const currentIndex = GLOW_POSITIONS.findIndex(p => p.id === state.glowPosition);
     const nextIndex = (currentIndex + 1) % GLOW_POSITIONS.length;
     const nextPos = GLOW_POSITIONS[nextIndex].id;
@@ -581,13 +599,6 @@ function updateMobileSettingsUI() {
             mobileGlowBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> <span>Выкл</span>';
             mobileGlowBtn.classList.remove('active');
         }
-    }
-
-    // Позиция
-    const posObj = GLOW_POSITIONS.find(p => p.id === state.glowPosition) || GLOW_POSITIONS[0];
-    const mobileGlowPosStatus = document.getElementById('mobileGlowPosStatus');
-    if (mobileGlowPosStatus) {
-        mobileGlowPosStatus.innerText = posObj.name;
     }
 }
 

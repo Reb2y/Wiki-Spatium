@@ -1487,12 +1487,15 @@ pre code {
         padding: 0.5rem;
     }
 
+    /* ОБНОВЛЕНО: На мобильных кнопка "В консоль" больше и с видоизменённым текстом */
     .console-btn span {
-        display: none; /* На мобилке скрываем текст, оставляем системную иконку */
+        display: inline-block;
+        font-size: 0.6rem;
     }
 
     .console-btn {
-        padding: 0.5rem 0.6rem;
+        padding: 0.6rem 0.85rem;
+        font-size: 0.6rem;
         margin-left: 0;
     }
 
