@@ -48,19 +48,44 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ВЫБОРА ЦВЕТА СВЕЧЕНИЯ (ДЛЯ ПК И ДЛЯ ВКЛАДКИ НА МОБИЛЬНЫХ) -->
+    <!-- МОДАЛЬНОЕ ОКНО ВЫБОРА ЦВЕТА СВЕЧЕНИЯ (КРУГЛАЯ ПАЛИТРА С ПОЛЗУНКАМИ И КОДАМИ) -->
     <div class="color-picker-overlay" id="colorPickerModal" onclick="closeColorPicker(event)">
         <div class="color-picker-modal">
             <div class="color-picker-header">
-                <h3><i class="fa-solid fa-palette"></i> Цвет свечения</h3>
+                <h3><i class="fa-solid fa-palette"></i> Палитра свечения</h3>
                 <button class="close-picker-btn" onclick="toggleColorPickerModal(false)">&times;</button>
             </div>
-            <p class="color-picker-desc">Выберите один из 16 оттенков для фона страницы:</p>
-            <div class="color-grid" id="colorGrid">
-                <!-- Динамически заполняется 16 цветами -->
+            
+            <div class="wheel-container">
+                <canvas id="colorWheelCanvas" width="200" height="200"></canvas>
+                <div class="wheel-handle" id="wheelHandle"></div>
             </div>
+
+            <div class="picker-sliders">
+                <div class="slider-group">
+                    <label><span>Оттенок (Hue)</span><span id="hueVal">180°</span></label>
+                    <input type="range" id="hueSlider" min="0" max="360" value="180">
+                </div>
+                <div class="slider-group">
+                    <label><span>Насыщенность</span><span id="satVal">80%</span></label>
+                    <input type="range" id="satSlider" min="0" max="100" value="80">
+                </div>
+                <div class="slider-group">
+                    <label><span>Яркость</span><span id="lightVal">50%</span></label>
+                    <input type="range" id="lightSlider" min="10" max="90" value="50">
+                </div>
+            </div>
+
+            <div class="color-preview-box">
+                <div class="preview-swatch" id="previewSwatch"></div>
+                <div class="color-codes">
+                    <div class="code-item"><span>HEX:</span> <strong id="hexCode">#00FFFF</strong></div>
+                    <div class="code-item"><span>RGB:</span> <strong id="rgbCode">rgb(0, 255, 255)</strong></div>
+                </div>
+            </div>
+
             <button class="reset-color-btn" onclick="resetGlowColor()">
-                <i class="fa-solid fa-rotate-left"></i> Сбросить цвет
+                <i class="fa-solid fa-rotate-left"></i> Сбросить по умолчанию
             </button>
         </div>
     </div>
@@ -151,11 +176,19 @@
                 <i class="fa-solid fa-magnifying-glass"></i>
             </div>
 
-            <!-- ЭЛЕМЕНТЫ ТОЛЬКО ДЛЯ ПК -->
+            <!-- ЭЛЕМЕНТЫ УПРАВЛЕНИЯ ДЛЯ ПК -->
             <div class="desktop-only-controls">
-                <!-- Кнопка свечения -->
+                <!-- 1. Кнопка свечения -->
                 <button class="glow-toggle-btn" id="glowToggleBtn" title="ЛКМ: Сменить позицию | Зажатие: Цвет | ПКМ: Вкл/Выкл">
                     <i class="fa-solid fa-circle-half-stroke glow-icon" id="glowIcon"></i>
+                </button>
+                <!-- 2. Кнопка безопасного режима -->
+                <button class="safe-toggle-btn" id="safeToggleBtn" title="Безопасный режим (без вспышек)" onclick="toggleEpilepsyMode()">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </button>
+                <!-- 3. Кнопка переключения темы -->
+                <button class="theme-toggle" id="themeToggleBtn" title="Переключить тему">
+                    <i class="fa-solid fa-sun"></i>
                 </button>
             </div>
 

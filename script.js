@@ -286,27 +286,7 @@ const WIKI_DATA = {
     ]
 };
 
-/* ==================== ПАЛИТРА ИЗ 16 ЦВЕТОВ ==================== */
-const GLOW_COLORS = [
-    { name: "Голубой (Дефолт)", hex: "#36d1dc", rgb: "54, 209, 220" },
-    { name: "Синий Электрик", hex: "#0072ff", rgb: "0, 114, 255" },
-    { name: "Фиолетовый", hex: "#8a2be2", rgb: "138, 43, 226" },
-    { name: "Пурпурный", hex: "#d800ff", rgb: "216, 0, 255" },
-    { name: "Неоновый Розовый", hex: "#ff007f", rgb: "255, 0, 127" },
-    { name: "Алый Красный", hex: "#ff2a2a", rgb: "255, 42, 42" },
-    { name: "Оранжевый Закат", hex: "#ff6b00", rgb: "255, 107, 0" },
-    { name: "Янтарный Золотой", hex: "#ffaa00", rgb: "255, 170, 0" },
-    { name: "Лаймовый Зеленый", hex: "#00ff66", rgb: "0, 255, 102" },
-    { name: "Изумрудный", hex: "#00b060", rgb: "0, 176, 96" },
-    { name: "Бирюзовый", hex: "#00f2fe", rgb: "0, 242, 254" },
-    { name: "Мятный", hex: "#00ffaa", rgb: "0, 255, 170" },
-    { name: "Кибер-Желтый", hex: "#ffe600", rgb: "255, 230, 0" },
-    { name: "Глубокий Индиго", hex: "#4a00e0", rgb: "74, 0, 224" },
-    { name: "Пастельный Персик", hex: "#ff9a9e", rgb: "255, 154, 158" },
-    { name: "Белоснежный Глянцевый", hex: "#ffffff", rgb: "255, 255, 255" }
-];
-
-/* ==================== ПРОВЕРКА МОБИЛЬНОГО УСТРОЙСТВА ==================== */
+/* ==================== ПРОБЛЕМЫ И ПРОВЕРКА МОБИЛЬНОСТИ ==================== */
 function isMobileDevice() {
     return window.innerWidth <= 768;
 }
@@ -317,7 +297,8 @@ let state = {
     epilepsySafe: localStorage.getItem('spatium_epilepsy_safe') === 'true',
     glowPosition: isMobileDevice() ? 'center' : (localStorage.getItem('spatium_glow_position') || 'left'),
     glowEnabled: localStorage.getItem('spatium_glow_enabled') !== 'false',
-    customGlowColor: localStorage.getItem('spatium_custom_glow_color') || null,
+    customGlowColor: localStorage.getItem('spatium_custom_glow_color') || null, // Сохраняем строку "h,s,l"
+    colorHSL: { h: 180, s: 80, l: 50 },
     currentPage: 'home',
     currentParam: null
 };
@@ -336,12 +317,11 @@ document.addEventListener('DOMContentLoaded', () => {
     initCustomColor();
     initEpilepsyCheck();
     initGlowButtonEvents();
+    initColorWheel();
     renderSidebar();
-    renderColorGrid();
     updateMobileSettingsUI();
     handleRoute();
 
-    // Открытие / закрытие мобильного меню
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
     const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
@@ -430,7 +410,7 @@ function applyGlowPositionClass(pos) {
     document.body.classList.add(`glow-${pos}`);
 }
 
-/* ==================== ОБРАБОТЧИКИ ПКМ / ЗАЖАТИЯ ДЛЯ ПК ==================== */
+/* ==================== ОБРАБОТЧИКИ ПКМ / ЗАЖАТИЯ ==================== */
 let holdTimer = null;
 let isHoldActionTriggered = false;
 
@@ -471,51 +451,166 @@ function initGlowButtonEvents() {
     btn.addEventListener('mouseleave', () => clearTimeout(holdTimer));
 }
 
-/* ==================== КАСТОМНЫЕ ЦВЕТА СВЕЧЕНИЯ ==================== */
+/* ==================== КРУГЛАЯ ПАЛИТРА И ПОЛЗУНКИ ==================== */
 function initCustomColor() {
     if (state.customGlowColor) {
-        applyCustomColor(state.customGlowColor);
+        const parts = state.customGlowColor.split(',').map(Number);
+        if (parts.length === 3) {
+            state.colorHSL = { h: parts[0], s: parts[1], l: parts[2] };
+            applyHSLColor(state.colorHSL);
+        }
     }
 }
 
-function applyCustomColor(rgbStr) {
+function applyHSLColor(hsl) {
     const root = document.documentElement;
-    root.style.setProperty('--glow-color-1', `rgba(${rgbStr}, 0.45)`);
-    root.style.setProperty('--glow-color-2', `rgba(${rgbStr}, 0.35)`);
-    root.style.setProperty('--glow-color-3', `rgba(${rgbStr}, 0.25)`);
+    root.style.setProperty('--glow-color-1', `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 0.45)`);
+    root.style.setProperty('--glow-color-2', `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 0.35)`);
+    root.style.setProperty('--glow-color-3', `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 0.25)`);
 }
 
-function selectGlowColor(colorObj) {
-    state.customGlowColor = colorObj.rgb;
-    localStorage.setItem('spatium_custom_glow_color', colorObj.rgb);
-    applyCustomColor(colorObj.rgb);
+function hslToRgb(h, s, l) {
+    s /= 100;
+    l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return [Math.round(255 * f(0)), Math.round(255 * f(8)), Math.round(255 * f(4))];
+}
+
+function rgbToHex(r, g, b) {
+    return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
+function initColorWheel() {
+    const canvas = document.getElementById('colorWheelCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const radius = canvas.width / 2;
+
+    // Отрисовка цветового круга (Hue/Sat)
+    for (let x = -radius; x < radius; x++) {
+        for (let y = -radius; y < radius; y++) {
+            const distance = Math.sqrt(x * x + y * y);
+            if (distance <= radius) {
+                let angle = Math.atan2(y, x) * (180 / Math.PI);
+                if (angle < 0) angle += 360;
+                const sat = (distance / radius) * 100;
+                ctx.fillStyle = `hsl(${angle}, ${sat}%, 50%)`;
+                ctx.fillRect(x + radius, y + radius, 1, 1);
+            }
+        }
+    }
+
+    // Обработка кликов/перетаскивания по кругу
+    let isDraggingWheel = false;
+
+    const handleWheelMove = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        const x = clientX - rect.left - radius;
+        const y = clientY - rect.top - radius;
+        const distance = Math.min(Math.sqrt(x * x + y * y), radius);
+
+        let angle = Math.atan2(y, x) * (180 / Math.PI);
+        if (angle < 0) angle += 360;
+
+        state.colorHSL.h = Math.round(angle);
+        state.colorHSL.s = Math.round((distance / radius) * 100);
+
+        updateColorPickerUI(true);
+    };
+
+    canvas.addEventListener('mousedown', (e) => { isDraggingWheel = true; handleWheelMove(e); });
+    window.addEventListener('mousemove', (e) => { if (isDraggingWheel) handleWheelMove(e); });
+    window.addEventListener('mouseup', () => { isDraggingWheel = false; });
+
+    canvas.addEventListener('touchstart', (e) => { isDraggingWheel = true; handleWheelMove(e); }, { passive: true });
+    window.addEventListener('touchmove', (e) => { if (isDraggingWheel) handleWheelMove(e); });
+    window.addEventListener('touchend', () => { isDraggingWheel = false; });
+
+    // Ползунки
+    const hueSlider = document.getElementById('hueSlider');
+    const satSlider = document.getElementById('satSlider');
+    const lightSlider = document.getElementById('lightSlider');
+
+    hueSlider.addEventListener('input', (e) => { state.colorHSL.h = Number(e.target.value); updateColorPickerUI(false); });
+    satSlider.addEventListener('input', (e) => { state.colorHSL.s = Number(e.target.value); updateColorPickerUI(false); });
+    lightSlider.addEventListener('input', (e) => { state.colorHSL.l = Number(e.target.value); updateColorPickerUI(false); });
+}
+
+function updateColorPickerUI(fromWheel = false) {
+    const { h, s, l } = state.colorHSL;
+
+    // Обновляем ползунки и текстовые значения
+    document.getElementById('hueSlider').value = h;
+    document.getElementById('satSlider').value = s;
+    document.getElementById('lightSlider').value = l;
+
+    document.getElementById('hueVal').textContent = `${h}°`;
+    document.getElementById('satVal').textContent = `${s}%`;
+    document.getElementById('lightVal').textContent = `${l}%`;
+
+    // Позиционируем маркер на круге
+    const canvas = document.getElementById('colorWheelCanvas');
+    const handle = document.getElementById('wheelHandle');
+    if (canvas && handle) {
+        const radius = canvas.width / 2;
+        const rad = (h * Math.PI) / 180;
+        const dist = (s / 100) * radius;
+
+        const handleX = radius + dist * Math.cos(rad);
+        const handleY = radius + dist * Math.sin(rad);
+
+        handle.style.left = `${handleX}px`;
+        handle.style.top = `${handleY}px`;
+    }
+
+    // Расчет RGB и HEX
+    const [r, g, b] = hslToRgb(h, s, l);
+    const hex = rgbToHex(r, g, b);
+
+    document.getElementById('previewSwatch').style.background = `hsl(${h}, ${s}%, ${l}%)`;
+    document.getElementById('hexCode').textContent = hex;
+    document.getElementById('rgbCode').textContent = `rgb(${r}, ${g}, ${b})`;
+
+    // Сохранение и применение
+    const strHSL = `${h},${s},${l}`;
+    state.customGlowColor = strHSL;
+    localStorage.setItem('spatium_custom_glow_color', strHSL);
+    applyHSLColor(state.colorHSL);
 
     if (!state.glowEnabled) {
         toggleGlowEnabled();
     }
-
-    renderColorGrid();
-    toggleColorPickerModal(false);
 }
 
 function resetGlowColor() {
     state.customGlowColor = null;
     localStorage.removeItem('spatium_custom_glow_color');
 
+    state.colorHSL = { h: 180, s: 80, l: 50 };
+
     const root = document.documentElement;
     root.style.removeProperty('--glow-color-1');
     root.style.removeProperty('--glow-color-2');
     root.style.removeProperty('--glow-color-3');
 
-    renderColorGrid();
+    updateColorPickerUI();
     toggleColorPickerModal(false);
 }
 
 function toggleColorPickerModal(show) {
     const modal = document.getElementById('colorPickerModal');
     if (!modal) return;
-    if (show) modal.classList.add('active');
-    else modal.classList.remove('active');
+    if (show) {
+        updateColorPickerUI();
+        modal.classList.add('active');
+    } else {
+        modal.classList.remove('active');
+    }
 }
 
 function closeColorPicker(e) {
@@ -524,23 +619,7 @@ function closeColorPicker(e) {
     }
 }
 
-function renderColorGrid() {
-    const grid = document.getElementById('colorGrid');
-    if (!grid) return;
-
-    grid.innerHTML = GLOW_COLORS.map(c => {
-        const isActive = state.customGlowColor === c.rgb;
-        return `
-            <div class="color-swatch ${isActive ? 'active' : ''}" 
-                 style="background: ${c.hex}; color: ${c.hex};" 
-                 title="${c.name}"
-                 onclick="selectGlowColor({ hex: '${c.hex}', rgb: '${c.rgb}' })">
-            </div>
-        `;
-    }).join('');
-}
-
-/* ==================== ЕДИНОЕ МОДАЛЬНОЕ ОКНО НАСТРОЕК (МОБИЛЬНАЯ ВЕРСИЯ) ==================== */
+/* ==================== МОБИЛЬНЫЕ НАСТРОЙКИ ==================== */
 function toggleMobileSettingsModal(show) {
     const modal = document.getElementById('mobileSettingsModal');
     if (!modal) return;
@@ -564,10 +643,8 @@ function openColorPickerFromMobile() {
 }
 
 function updateMobileSettingsUI() {
-    // Тема
     const mobileThemeBtn = document.getElementById('mobileThemeToggleBtn');
-    const mobileThemeStatus = document.getElementById('mobileThemeStatus');
-    if (mobileThemeBtn && mobileThemeStatus) {
+    if (mobileThemeBtn) {
         if (state.theme === 'dark') {
             mobileThemeBtn.innerHTML = '<i class="fa-solid fa-moon"></i> <span>Тёмная</span>';
             mobileThemeBtn.classList.remove('active');
@@ -577,7 +654,6 @@ function updateMobileSettingsUI() {
         }
     }
 
-    // Безопасность
     const mobileSafeBtn = document.getElementById('mobileSafeToggleBtn');
     if (mobileSafeBtn) {
         if (state.epilepsySafe) {
@@ -589,7 +665,6 @@ function updateMobileSettingsUI() {
         }
     }
 
-    // Вкл/Выкл свечения
     const mobileGlowBtn = document.getElementById('mobileGlowToggleBtn');
     if (mobileGlowBtn) {
         if (state.glowEnabled) {
@@ -675,19 +750,11 @@ function updateThemeAssets() {
     const logo = document.getElementById('siteLogo');
 
     if (btn) {
-        if (state.theme === 'dark') {
-            btn.innerHTML = '<i class="fa-solid fa-sun"></i>';
-        } else {
-            btn.innerHTML = '<i class="fa-solid fa-moon"></i>';
-        }
+        btn.innerHTML = state.theme === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
     }
 
     if (logo) {
-        if (state.theme === 'dark') {
-            logo.src = 'img/spatium_logo_black.png';
-        } else {
-            logo.src = 'img/spatium_logo_white.png';
-        }
+        logo.src = state.theme === 'dark' ? 'img/spatium_logo_black.png' : 'img/spatium_logo_white.png';
     }
 }
 
@@ -696,11 +763,9 @@ function navigateTo(page, param = null) {
     state.currentPage = page;
     state.currentParam = param;
     
-    // Закрываем боковую панель при переходах на мобилке
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('sidebarOverlay').classList.remove('active');
 
-    // Закрываем мобильный поиск
     const searchBar = document.getElementById('mobileSearchBar');
     if (searchBar) searchBar.classList.remove('active');
     
@@ -740,7 +805,6 @@ function renderSidebar() {
 /* ==================== РЕНДЕР КОНТЕНТА ==================== */
 function renderContent() {
     const container = document.getElementById('mainContent');
-    
     container.innerHTML = `<div id="animatedWrapper" class="page-animated"></div>`;
     const wrapper = document.getElementById('animatedWrapper');
 
@@ -764,7 +828,6 @@ function getArticleMediaHtml(article, size = 48) {
     return `<div style="width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 6px; flex-shrink: 0; font-size: ${size * 0.45}px; color: var(--accent);"><i class="fa-regular fa-file-lines"></i></div>`;
 }
 
-/* --- 1. Главная страница --- */
 function renderHomePage(container) {
     const popularArticles = WIKI_DATA.articles.filter(a => a.popular);
     const recentArticles = [...WIKI_DATA.articles].sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 4);
@@ -834,7 +897,6 @@ function renderHomePage(container) {
     `;
 }
 
-/* --- 2. Страница категории --- */
 function renderCategoryPage(container, categoryId) {
     if (categoryId === 'all') {
         renderHomePage(container);
@@ -879,7 +941,6 @@ function renderCategoryPage(container, categoryId) {
     `;
 }
 
-/* --- 3. Страница статьи --- */
 function renderArticlePage(container, articleId) {
     const article = WIKI_DATA.articles.find(a => a.id === articleId);
     if (!article) {
@@ -945,7 +1006,6 @@ function generateTOC() {
     tocList.innerHTML = tocHtml;
 }
 
-/* --- 4. Страница поиска --- */
 function renderSearchPage(container, query) {
     const cleanQuery = query.toLowerCase().trim();
     const results = WIKI_DATA.articles.filter(a => 
@@ -988,16 +1048,16 @@ function renderSearchPage(container, query) {
     `;
 }
 
-/* ==================== ХЭНДЛЕРЫ ПОИСКА ==================== */
 function handleHeaderSearch(e) {
-    if (e.key === 'Enter' && e.target.value.trim() !== '') {
-        navigateTo('search', e.target.value.trim());
-        e.target.value = '';
+    if (e.key === 'Enter') {
+        const query = e.target.value;
+        if (query.trim()) navigateTo('search', query);
     }
 }
 
 function handleHeroSearch(e) {
-    if (e.key === 'Enter' && e.target.value.trim() !== '') {
-        navigateTo('search', e.target.value.trim());
+    if (e.key === 'Enter') {
+        const query = e.target.value;
+        if (query.trim()) navigateTo('search', query);
     }
 }
