@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Spatium Wiki — Официальная база знаний</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- Font Awesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- АНИМИРОВАННАЯ ОРГАНИЧЕСКАЯ ВОЛНА СВЕЧЕНИЯ -->
+    <div class="glow-container" id="glowContainer">
+        <div class="glow-blob glow-blob-1" id="glowBlob1"></div>
+        <div class="glow-blob glow-blob-2" id="glowBlob2"></div>
+        <div class="glow-blob glow-blob-3" id="glowBlob3"></div>
+    </div>
+
+    <!-- ПОЛНОЭКРАННЫЙ ОВЕРЛЕЙ ПОЖИРАЮЩЕГО ГЛИТЧА И МЯГКОГО ПЕРЕХОДА -->
+    <div class="glitch-overlay" id="glitchOverlay"></div>
+
+    <!-- ОВЕРЛЕЙ ДЛЯ МОБИЛЬНОГО МЕНЮ -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- МОДАЛЬНОЕ ОКНО ПРЕДУПРЕЖДЕНИЯ (ЭПИЛЕПСИЯ / ЧУВСТВИТЕЛЬНОСТЬ) -->
+    <div class="epilepsy-modal-overlay" id="epilepsyModal">
+        <div class="epilepsy-modal">
+            <div class="epilepsy-icon">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h2>Предупреждение о вспышках</h2>
+            <p>Наш сайт содержит интенсивные глитч-эффекты, мигающие элементы и быструю анимацию экрана при переходе в консоль Spatium OS.</p>
+            <p><strong>У вас есть чувствительность к вспышкам или эпилепсия?</strong></p>
+            <div class="epilepsy-buttons">
+                <button class="epilepsy-btn safe" onclick="setEpilepsySafeMode(true)">
+                    <i class="fa-solid fa-shield-halved"></i> Да, включить безопасный режим
+                </button>
+                <button class="epilepsy-btn full" onclick="setEpilepsySafeMode(false)">
+                    <i class="fa-solid fa-bolt"></i> Нет, оставить эффекты
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО ВЫБОРА ЦВЕТА СВЕЧЕНИЯ -->
+    <div class="color-picker-overlay" id="colorPickerModal" onclick="closeColorPicker(event)">
+        <div class="color-picker-modal">
+            <div class="color-picker-header">
+                <h3><i class="fa-solid fa-palette"></i> Цвет свечения</h3>
+                <button class="close-picker-btn" onclick="toggleColorPickerModal(false)">&times;</button>
+            </div>
+            <p class="color-picker-desc">Выберите один из 16 оттенков для фона страницы:</p>
+            <div class="color-grid" id="colorGrid">
+                <!-- Динамически заполняется 16 цветами -->
+            </div>
+            <button class="reset-color-btn" onclick="resetGlowColor()">
+                <i class="fa-solid fa-rotate-left"></i> Сбросить цвет
+            </button>
+        </div>
+    </div>
+
+    <!-- ШАПКА -->
+    <header>
+        <div class="header-left">
+            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Открыть меню">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="logo" onclick="navigateTo('home')">
+                <img id="siteLogo" class="logo-img" src="img/spatium_logo_black.png" alt="Spatium Wiki Logo">
+            </div>
+            <nav class="nav-links">
+                <button class="nav-btn active" id="navHome" onclick="navigateTo('home')">
+                    <i class="fa-solid fa-house"></i> <span>Главная</span>
+                </button>
+                <!-- Кнопка перехода в Spatium OS -->
+                <a href="https://reb2y.github.io/Spatium-OS/" target="_blank" id="consoleLink" onclick="triggerConsoleTransition(event)" style="text-decoration: none;">
+                    <button class="console-btn" id="navConsole" data-text="В консоль">
+                        <i class="fa-solid fa-terminal"></i> <span>В консоль</span>
+                    </button>
+                </a>
+            </nav>
+        </div>
+
+        <div class="header-right">
+            <!-- Поиск для ПК -->
+            <div class="search-box-header">
+                <input type="text" id="headerSearchInput" placeholder="Поиск по Wiki..." onkeyup="handleHeaderSearch(event)">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </div>
+
+            <!-- Кнопка поиска для мобилок -->
+            <button class="mobile-search-toggle" id="mobileSearchToggleBtn" onclick="toggleMobileSearch()" title="Поиск">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+            
+            <!-- Кнопка свечения -->
+            <button class="glow-toggle-btn" id="glowToggleBtn" title="ЛКМ: Сменить позицию | Зажатие: Цвет | ПКМ: Вкл/Выкл">
+                <i class="fa-solid fa-circle-half-stroke glow-icon" id="glowIcon"></i>
+            </button>
+
+            <!-- Безопасный режим -->
+            <button class="safe-toggle-btn" id="safeToggleBtn" onclick="toggleEpilepsyMode()" title="Переключить безопасный режим">
+                <i class="fa-solid fa-shield-halved"></i>
+            </button>
+
+            <!-- Тема -->
+            <button class="theme-toggle" id="themeToggleBtn" title="Переключить тему">
+                <i class="fa-solid fa-moon"></i>
+            </button>
+        </div>
+
+        <!-- Выпадающий поиск на мобильных -->
+        <div class="mobile-search-bar" id="mobileSearchBar">
+            <input type="text" id="mobileSearchInput" placeholder="Поиск по Wiki..." onkeyup="handleHeaderSearch(event)">
+            <button onclick="toggleMobileSearch()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </header>
+
+    <div class="layout">
+        <!-- БОКОВАЯ НАВИГАЦИЯ -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header-mobile">
+                <span>Меню навигации</span>
+                <button class="sidebar-close-btn" id="sidebarCloseBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="sidebar-title">Категории</div>
+            <ul class="sidebar-menu" id="sidebarMenu">
+                <!-- Заполняется динамически -->
+            </ul>
+        </aside>
+
+        <!-- ОСНОВНОЙ КОНТЕНТ -->
+        <main class="content" id="mainContent">
+            <!-- Загружается плавно с анимацией -->
+        </main>
+    </div>
+
+    <!-- Custom JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
