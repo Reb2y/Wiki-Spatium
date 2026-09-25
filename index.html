@@ -157,56 +157,45 @@
                 <button class="glow-toggle-btn" id="glowToggleBtn" title="ЛКМ: Сменить позицию | Зажатие: Цвет | ПКМ: Вкл/Выкл">
                     <i class="fa-solid fa-circle-half-stroke glow-icon" id="glowIcon"></i>
                 </button>
-
-                <!-- Безопасный режим -->
-                <button class="safe-toggle-btn" id="safeToggleBtn" onclick="toggleEpilepsyMode()" title="Переключить безопасный режим">
-                    <i class="fa-solid fa-shield-halved"></i>
-                </button>
-
-                <!-- Тема -->
-                <button class="theme-toggle" id="themeToggleBtn" title="Переключить тему">
-                    <i class="fa-solid fa-moon"></i>
-                </button>
             </div>
 
-            <!-- Кнопка поиска для мобилок -->
-            <button class="mobile-search-toggle" id="mobileSearchToggleBtn" onclick="toggleMobileSearch()" title="Поиск">
+            <!-- КНОПКИ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ -->
+            <button class="mobile-search-toggle" onclick="toggleMobileSearch()" aria-label="Поиск">
                 <i class="fa-solid fa-magnifying-glass"></i>
             </button>
-
-            <!-- ЕДИНАЯ КНОПКА НАСТРОЕК ТОЛЬКО ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ -->
-            <button class="mobile-settings-toggle" id="mobileSettingsToggleBtn" onclick="toggleMobileSettingsModal(true)" title="Настройки">
-                <i class="fa-solid fa-gear"></i>
+            <button class="mobile-settings-toggle" onclick="toggleMobileSettingsModal(true)" aria-label="Настройки">
+                <i class="fa-solid fa-sliders"></i>
             </button>
         </div>
 
-        <!-- Выпадающий поиск на мобильных -->
+        <!-- МОБИЛЬНЫЙ ПОИСКОВЫЙ БАР -->
         <div class="mobile-search-bar" id="mobileSearchBar">
             <input type="text" id="mobileSearchInput" placeholder="Поиск по Wiki..." onkeyup="handleHeaderSearch(event)">
             <button onclick="toggleMobileSearch()"><i class="fa-solid fa-xmark"></i></button>
         </div>
     </header>
 
+    <!-- ОСНОВНОЙ ВЕРСТКА -->
     <div class="layout">
         <!-- БОКОВАЯ НАВИГАЦИЯ -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header-mobile">
-                <span>Меню навигации</span>
-                <button class="sidebar-close-btn" id="sidebarCloseBtn"><i class="fa-solid fa-xmark"></i></button>
+                <span>Категории</span>
+                <button class="sidebar-close-btn" id="sidebarCloseBtn">&times;</button>
             </div>
-            <div class="sidebar-title">Категории</div>
+            <div class="sidebar-title">Навигация по базе</div>
             <ul class="sidebar-menu" id="sidebarMenu">
-                <!-- Заполняется динамически -->
+                <!-- Динамически заполняется -->
             </ul>
         </aside>
 
         <!-- ОСНОВНОЙ КОНТЕНТ -->
         <main class="content" id="mainContent">
-            <!-- Загружается плавно с анимацией -->
+            <!-- Динамически заполняется через JS -->
         </main>
     </div>
 
-    <!-- Custom JavaScript -->
+    <!-- JS СКТИПТЫ -->
     <script src="script.js"></script>
 </body>
 </html>

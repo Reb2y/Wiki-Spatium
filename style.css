@@ -106,6 +106,7 @@ a:hover {
     transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s ease;
     opacity: 1;
     visibility: visible;
+    transform: translateZ(0); /* Включение аппаратного ускорения */
 }
 
 .glow-container.glow-disabled {
@@ -116,8 +117,10 @@ a:hover {
 .glow-blob {
     position: absolute;
     border-radius: 50%;
-    filter: blur(90px);
-    opacity: 0.85;
+    filter: blur(80px);
+    opacity: 0.8;
+    will-change: transform, opacity;
+    transform: translateZ(0);
     transition: left 1.2s cubic-bezier(0.25, 1, 0.5, 1), 
                 top 1.2s cubic-bezier(0.25, 1, 0.5, 1), 
                 transform 0.8s cubic-bezier(0.4, 0, 0.2, 1),
@@ -126,8 +129,8 @@ a:hover {
 }
 
 .glow-container.glow-disabled .glow-blob {
-    transform: scale(0.3) rotate(45deg) !important;
-    filter: blur(160px);
+    transform: scale(0.3) rotate(45deg) translateZ(0) !important;
+    filter: blur(120px);
 }
 
 .glow-blob-1 {
@@ -164,27 +167,27 @@ body.glow-right .glow-blob-2 { top: 45%; left: calc(100% - 550px); }
 body.glow-right .glow-blob-3 { top: 15%; left: calc(100% - 300px); }
 
 @keyframes waveMorph1 {
-    0% { transform: scale(1) translate(0, 0) rotate(0deg); border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; }
-    33% { transform: scale(1.15) translate(30px, -40px) rotate(120deg); border-radius: 70% 30% 50% 50% / 30% 60% 40% 70%; }
-    66% { transform: scale(0.9) translate(-20px, 30px) rotate(240deg); border-radius: 30% 70% 70% 30% / 50% 30% 70% 50%; }
-    100% { transform: scale(1.1) translate(10px, -20px) rotate(360deg); border-radius: 60% 40% 30% 70% / 70% 40% 60% 30%; }
+    0% { transform: scale(1) translate(0, 0) rotate(0deg) translateZ(0); border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; }
+    33% { transform: scale(1.15) translate(30px, -40px) rotate(120deg) translateZ(0); border-radius: 70% 30% 50% 50% / 30% 60% 40% 70%; }
+    66% { transform: scale(0.9) translate(-20px, 30px) rotate(240deg) translateZ(0); border-radius: 30% 70% 70% 30% / 50% 30% 70% 50%; }
+    100% { transform: scale(1.1) translate(10px, -20px) rotate(360deg) translateZ(0); border-radius: 60% 40% 30% 70% / 70% 40% 60% 30%; }
 }
 
 @keyframes waveMorph2 {
-    0% { transform: scale(1) translate(0, 0) rotate(0deg); border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
-    50% { transform: scale(1.25) translate(-40px, 30px) rotate(180deg); border-radius: 30% 70% 60% 40% / 50% 60% 30% 70%; }
-    100% { transform: scale(0.95) translate(30px, -30px) rotate(360deg); border-radius: 50% 50% 40% 60% / 40% 70% 30% 60%; }
+    0% { transform: scale(1) translate(0, 0) rotate(0deg) translateZ(0); border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+    50% { transform: scale(1.25) translate(-40px, 30px) rotate(180deg) translateZ(0); border-radius: 30% 70% 60% 40% / 50% 60% 30% 70%; }
+    100% { transform: scale(0.95) translate(30px, -30px) rotate(360deg) translateZ(0); border-radius: 50% 50% 40% 60% / 40% 70% 30% 60%; }
 }
 
 @keyframes waveMorph3 {
-    0% { transform: scale(0.9) translate(0, 0); }
-    50% { transform: scale(1.2) translate(25px, -25px); }
-    100% { transform: scale(-15px, 15px); }
+    0% { transform: scale(0.9) translate(0, 0) translateZ(0); }
+    50% { transform: scale(1.2) translate(25px, -25px) translateZ(0); }
+    100% { transform: scale(0.95) translate(-15px, 15px) translateZ(0); }
 }
 
 body.epilepsy-safe .glow-blob {
     animation-duration: 25s;
-    filter: blur(120px);
+    filter: blur(90px);
     opacity: 0.5;
 }
 
@@ -1463,6 +1466,31 @@ pre code {
 }
 
 @media (max-width: 768px) {
+    /* ОПТИМИЗАЦИЯ СВЕЧЕНИЯ ПОД МОБИЛЬНЫЕ ДЛЯ УСТРАНЕНИЯ ГЛЮКОВ */
+    .glow-blob {
+        filter: blur(40px) !important;
+        opacity: 0.65;
+    }
+
+    .glow-blob-1 {
+        width: 300px;
+        height: 300px;
+    }
+
+    .glow-blob-2 {
+        width: 250px;
+        height: 250px;
+    }
+
+    .glow-blob-3 {
+        width: 200px;
+        height: 200px;
+    }
+
+    body.glow-center .glow-blob-1 { top: 20%; left: calc(50% - 150px); }
+    body.glow-center .glow-blob-2 { top: 10%; left: calc(50% - 80px); }
+    body.glow-center .glow-blob-3 { top: 35%; left: calc(50% - 100px); }
+
     header {
         padding: 0 0.75rem;
     }
@@ -1480,14 +1508,13 @@ pre code {
     }
 
     .nav-btn span {
-        display: none; /* Скрываем текст "Главная", оставив иконку */
+        display: none;
     }
 
     .nav-btn {
         padding: 0.5rem;
     }
 
-    /* ОБНОВЛЕНО: На мобильных кнопка "В консоль" больше и с видоизменённым текстом */
     .console-btn span {
         display: inline-block;
         font-size: 0.6rem;
@@ -1503,7 +1530,6 @@ pre code {
         display: none;
     }
 
-    /* На мобилках скрываем раздельные кнопки ПК и показываем единую кнопку настроек */
     .desktop-only-controls {
         display: none;
     }
