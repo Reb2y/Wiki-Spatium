@@ -2,12 +2,14 @@
 <html lang="ru" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spatium Wiki — Официальная база знаний</title>
     <!-- Google Fonts -->
+    <meta name="theme-color" content="#14161b">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700&family=JetBrains+Mono:wght@500&family=Press+Start+2P&display=swap" rel="stylesheet">
     <!-- Font Awesome icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom CSS -->
@@ -24,9 +26,6 @@
 
     <!-- ПОЛНОЭКРАННЫЙ ОВЕРЛЕЙ ПОЖИРАЮЩЕГО ГЛИТЧА И МЯГКОГО ПЕРЕХОДА -->
     <div class="glitch-overlay" id="glitchOverlay"></div>
-
-    <!-- ОВЕРЛЕЙ ДЛЯ МОБИЛЬНОГО МЕНЮ -->
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <!-- МОДАЛЬНОЕ ОКНО ПРЕДУПРЕЖДЕНИЯ (ЭПИЛЕПСИЯ / ЧУВСТВИТЕЛЬНОСТЬ) -->
     <div class="epilepsy-modal-overlay" id="epilepsyModal">
@@ -48,187 +47,162 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ВЫБОРА ЦВЕТА СВЕЧЕНИЯ (КРУГЛАЯ ПАЛИТРА С ПОЛЗУНКАМИ И КОДАМИ) -->
+    <!-- МОДАЛЬНОЕ ОКНО НАСТРОЙКИ СВЕЧЕНИЯ (ЦВЕТ И ФОРМА) -->
     <div class="color-picker-overlay" id="colorPickerModal" onclick="closeColorPicker(event)">
         <div class="color-picker-modal">
             <div class="color-picker-header">
-                <h3><i class="fa-solid fa-palette"></i> Палитра свечения</h3>
-                <button class="close-picker-btn" onclick="toggleColorPickerModal(false)">&times;</button>
+                <h3><i class="fa-solid fa-palette"></i> Настройка свечения</h3>
+                <button class="close-picker-btn" aria-label="Закрыть" onclick="toggleColorPickerModal(false)">&times;</button>
             </div>
+            <p class="color-picker-desc">Выберите точный цвет свечения:</p>
             
-            <div class="wheel-container">
-                <canvas id="colorWheelCanvas" width="200" height="200"></canvas>
-                <div class="wheel-handle" id="wheelHandle"></div>
+            <div class="color-picker-body">
+                <!-- Круговая палитра -->
+                <div class="wheel-wrapper">
+                    <canvas id="colorWheel" width="180" height="180"></canvas>
+                    <div class="wheel-handle" id="wheelHandle"></div>
+                </div>
+
+                <!-- Регулировки и код -->
+                <div class="color-controls">
+                    <div class="slider-group">
+                        <label><span>Оттенок (Hue)</span><span id="hueValue">39°</span></label>
+                        <input type="range" id="hueSlider" min="0" max="360" value="39">
+                    </div>
+                    
+                    <div class="slider-group">
+                        <label><span>Насыщенность</span><span id="satValue">87%</span></label>
+                        <input type="range" id="satSlider" min="0" max="100" value="87">
+                    </div>
+
+                    <div class="slider-group">
+                        <label><span>Яркость</span><span id="lightValue">60%</span></label>
+                        <input type="range" id="lightSlider" min="10" max="90" value="60">
+                    </div>
+
+                    <div class="hex-input-group">
+                        <label for="hexInput">Код цвета:</label>
+                        <div class="hex-field">
+                            <span class="preview-box" id="colorPreviewBox"></span>
+                            <input type="text" id="hexInput" value="#f2b441" maxlength="7" spellcheck="false">
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="picker-sliders">
-                <div class="slider-group">
-                    <label><span>Оттенок (Hue)</span><span id="hueVal">180°</span></label>
-                    <input type="range" id="hueSlider" min="0" max="360" value="180">
-                </div>
-                <div class="slider-group">
-                    <label><span>Насыщенность</span><span id="satVal">80%</span></label>
-                    <input type="range" id="satSlider" min="0" max="100" value="80">
-                </div>
-                <div class="slider-group">
-                    <label><span>Яркость</span><span id="lightVal">50%</span></label>
-                    <input type="range" id="lightSlider" min="10" max="90" value="50">
-                </div>
-            </div>
+            <button class="glow-power-btn" id="glowPowerBtn" onclick="toggleGlowEnabled()" aria-pressed="true">
+                <i class="fa-solid fa-power-off"></i> <span id="glowPowerLabel">Выключить свечение</span>
+            </button>
 
-            <div class="color-preview-box">
-                <div class="preview-swatch" id="previewSwatch"></div>
-                <div class="color-codes">
-                    <div class="code-item"><span>HEX:</span> <strong id="hexCode">#00FFFF</strong></div>
-                    <div class="code-item"><span>RGB:</span> <strong id="rgbCode">rgb(0, 255, 255)</strong></div>
-                </div>
-            </div>
-
-            <button class="reset-color-btn" onclick="resetGlowColor()">
-                <i class="fa-solid fa-rotate-left"></i> Сбросить по умолчанию
+            <button class="reset-color-btn" onclick="resetGlowSettings()">
+                <i class="fa-solid fa-rotate-left"></i> Сбросить настройки свечения
             </button>
         </div>
     </div>
 
-    <!-- ОБЩЕЕ МОДАЛЬНОЕ ОКНО НАСТРОЕК (ДЛЯ МОБИЛЬНОЙ ВЕРСИИ) -->
-    <div class="mobile-settings-overlay" id="mobileSettingsModal" onclick="closeMobileSettingsModal(event)">
-        <div class="mobile-settings-modal">
-            <div class="mobile-settings-header">
-                <h3><i class="fa-solid fa-sliders"></i> Настройки</h3>
-                <button class="close-picker-btn" onclick="toggleMobileSettingsModal(false)">&times;</button>
+    <!-- МОДАЛЬНОЕ ОКНО НАСТРОЙКИ БЕЗОПАСНОГО РЕЖИМА -->
+    <div class="color-picker-overlay" id="safeSettingsModal" onclick="closeSafeSettings(event)">
+        <div class="color-picker-modal">
+            <div class="color-picker-header">
+                <h3><i class="fa-solid fa-shield-halved"></i> Безопасный режим</h3>
+                <button class="close-picker-btn" aria-label="Закрыть" onclick="toggleSafeSettings(false)">&times;</button>
             </div>
-            
-            <div class="mobile-settings-body">
-                <!-- Секция 1: Тема -->
-                <div class="settings-section">
-                    <div class="settings-label">
-                        <span><i class="fa-solid fa-circle-half-stroke"></i> Внешний вид</span>
-                    </div>
-                    <div class="settings-row">
-                        <span>Тема оформления</span>
-                        <button class="setting-action-btn" id="mobileThemeToggleBtn" onclick="toggleTheme()">
-                            <i class="fa-solid fa-moon"></i> <span id="mobileThemeStatus">Тёмная</span>
-                        </button>
-                    </div>
-                </div>
+            <p class="color-picker-desc">Отметьте, что смягчать, когда режим включён. Снятые пункты остаются как обычно.</p>
 
-                <!-- Секция 2: Безопасность -->
-                <div class="settings-section">
-                    <div class="settings-label">
-                        <span><i class="fa-solid fa-shield-halved"></i> Безопасность</span>
-                    </div>
-                    <div class="settings-row">
-                        <span>Безопасный режим (без вспышек)</span>
-                        <button class="setting-action-btn" id="mobileSafeToggleBtn" onclick="toggleEpilepsyMode()">
-                            <i class="fa-solid fa-shield-halved"></i> <span id="mobileSafeStatus">Выкл</span>
-                        </button>
-                    </div>
-                </div>
+            <label class="safe-row safe-row-master">
+                <span class="safe-row-text"><b>Безопасный режим</b><small>Главный выключатель</small></span>
+                <input type="checkbox" class="safe-switch" id="safeMasterSwitch" onchange="setEpilepsySafeMode(this.checked)">
+            </label>
 
-                <!-- Секция 3: Настройки свечения -->
-                <div class="settings-section">
-                    <div class="settings-label">
-                        <span><i class="fa-solid fa-wand-magic-sparkles"></i> Фоновое свечение</span>
-                    </div>
-                    <div class="settings-row">
-                        <span>Состояние свечения</span>
-                        <button class="setting-action-btn" id="mobileGlowToggleBtn" onclick="toggleGlowEnabled()">
-                            <i class="fa-solid fa-power-off"></i> <span id="mobileGlowStatus">Вкл</span>
-                        </button>
-                    </div>
-                    <div class="settings-row">
-                        <span>Палитра цветов</span>
-                        <button class="setting-action-btn primary" onclick="openColorPickerFromMobile()">
-                            <i class="fa-solid fa-palette"></i> Выбрать цвет
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <div class="safe-opts" id="safeOptsList"></div>
+
+            <button class="reset-color-btn" onclick="resetSafeOptions()">
+                <i class="fa-solid fa-rotate-left"></i> Смягчать всё (по умолчанию)
+            </button>
         </div>
     </div>
 
     <!-- ШАПКА -->
     <header>
         <div class="header-left">
-            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Открыть меню">
+            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Меню категорий">
                 <i class="fa-solid fa-bars"></i>
             </button>
             <div class="logo" onclick="navigateTo('home')">
-                <img id="siteLogo" class="logo-img" src="img/spatium_logo_black.png" alt="Spatium Wiki Logo">
+                <img id="siteLogo" class="logo-img" src="img/spatium_logo_black.png" alt="Spatium Wiki Logo" onerror="this.classList.add('broken')" onload="this.classList.remove('broken')">
+                <span class="logo-text">Spatium</span>
             </div>
             <nav class="nav-links">
                 <button class="nav-btn active" id="navHome" onclick="navigateTo('home')">
-                    <i class="fa-solid fa-house"></i> <span>Главная</span>
+                    <i class="fa-solid fa-house"></i> Главная
+                </button>
+                <button class="nav-btn" id="navBookmarks" onclick="navigateTo('bookmarks')" aria-label="Закладки" title="Мои закладки">
+                    <i class="fa-solid fa-bookmark"></i> Закладки <span class="nav-badge" id="bookmarkBadge" hidden>0</span>
+                </button>
+                <!-- Карта мира (squaremap), встроена в сайт -->
+                <button class="nav-btn" id="navMap" onclick="navigateTo('map')" aria-label="Карта мира" title="Карта мира">
+                    <i class="fa-solid fa-map-location-dot"></i> Карта
                 </button>
                 <!-- Кнопка перехода в Spatium OS -->
-                <a href="https://reb2y.github.io/Spatium-OS/" target="_blank" id="consoleLink" onclick="triggerConsoleTransition(event)" style="text-decoration: none;">
-                    <button class="console-btn" id="navConsole" data-text="В консоль">
-                        <i class="fa-solid fa-terminal"></i> <span>В консоль</span>
-                    </button>
+                <a href="https://reb2y.github.io/Spatium-OS/" target="_blank" rel="noopener" id="consoleLink" class="console-btn" data-text="В консоль" onclick="triggerConsoleTransition(event)">
+                    <i class="fa-solid fa-terminal"></i> В консоль
                 </a>
             </nav>
         </div>
 
         <div class="header-right">
-            <!-- Поиск для ПК -->
             <div class="search-box-header">
                 <input type="text" id="headerSearchInput" placeholder="Поиск по Wiki..." onkeyup="handleHeaderSearch(event)">
                 <i class="fa-solid fa-magnifying-glass"></i>
             </div>
-
-            <!-- ЭЛЕМЕНТЫ УПРАВЛЕНИЯ ДЛЯ ПК -->
-            <div class="desktop-only-controls">
-                <!-- 1. Кнопка свечения -->
-                <button class="glow-toggle-btn" id="glowToggleBtn" title="ЛКМ: Сменить позицию | Зажатие: Цвет | ПКМ: Вкл/Выкл">
+            
+            <!-- Кнопка управления позицией/включением и настроек свечения -->
+            <div class="glow-control-group">
+                <button class="glow-toggle-btn" id="glowToggleBtn" aria-label="Позиция свечения" title="ЛКМ: Сменить позицию | ПКМ: Вкл/Выкл свечение">
                     <i class="fa-solid fa-circle-half-stroke glow-icon" id="glowIcon"></i>
                 </button>
-                <!-- 2. Кнопка безопасного режима -->
-                <button class="safe-toggle-btn" id="safeToggleBtn" title="Безопасный режим (без вспышек)" onclick="toggleEpilepsyMode()">
-                    <i class="fa-solid fa-shield-halved"></i>
-                </button>
-                <!-- 3. Кнопка переключения темы -->
-                <button class="theme-toggle" id="themeToggleBtn" title="Переключить тему">
-                    <i class="fa-solid fa-sun"></i>
+                <button class="glow-config-btn" id="glowConfigBtn" aria-label="Настройка свечения" onclick="toggleColorPickerModal(true)" title="Настройка цвета свечения">
+                    <i class="fa-solid fa-gear"></i>
                 </button>
             </div>
 
-            <!-- КНОПКИ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ -->
-            <button class="mobile-search-toggle" onclick="toggleMobileSearch()" aria-label="Поиск">
-                <i class="fa-solid fa-magnifying-glass"></i>
-            </button>
-            <button class="mobile-settings-toggle" onclick="toggleMobileSettingsModal(true)" aria-label="Настройки">
-                <i class="fa-solid fa-sliders"></i>
-            </button>
-        </div>
+            <!-- Безопасный режим: щит (вкл/выкл) + шестерёнка (настройки) -->
+            <div class="glow-control-group safe-group">
+                <button class="glow-toggle-btn safe-shield" id="safeToggleBtn" aria-label="Безопасный режим" onclick="toggleEpilepsyMode()" title="Включить / выключить безопасный режим">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </button>
+                <button class="glow-config-btn" id="safeConfigBtn" aria-label="Настройка безопасного режима" onclick="toggleSafeSettings(true)" title="Настроить, что смягчать в безопасном режиме">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+            </div>
 
-        <!-- МОБИЛЬНЫЙ ПОИСКОВЫЙ БАР -->
-        <div class="mobile-search-bar" id="mobileSearchBar">
-            <input type="text" id="mobileSearchInput" placeholder="Поиск по Wiki..." onkeyup="handleHeaderSearch(event)">
-            <button onclick="toggleMobileSearch()"><i class="fa-solid fa-xmark"></i></button>
+            <button class="theme-toggle" id="themeToggleBtn" aria-label="Переключить тему" title="Переключить тему">
+                <i class="fa-solid fa-moon"></i>
+            </button>
         </div>
     </header>
 
-    <!-- ОСНОВНАЯ ВЕРСТКА -->
     <div class="layout">
         <!-- БОКОВАЯ НАВИГАЦИЯ -->
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header-mobile">
-                <span>Категории</span>
-                <button class="sidebar-close-btn" id="sidebarCloseBtn">&times;</button>
-            </div>
-            <div class="sidebar-title">Навигация по базе</div>
+            <div class="sidebar-title">Категории</div>
             <ul class="sidebar-menu" id="sidebarMenu">
-                <!-- Динамически заполняется -->
+                <!-- Заполняется динамически -->
             </ul>
+            <!-- ВЕРСИЯ ВНИЗУ КАТЕГОРИЙ -->
+            <div class="sidebar-version" id="sidebarVersion">v0.0.1</div>
         </aside>
 
         <!-- ОСНОВНОЙ КОНТЕНТ -->
         <main class="content" id="mainContent">
-            <!-- Динамически заполняется через JS -->
+            <!-- Загружается плавно с анимацией -->
         </main>
     </div>
 
-    <!-- JS СКРИПТЫ -->
-    <script src="script.js"></script>
+    <!-- Custom JavaScript -->
+    <script src="articles.js" defer></script>
+    <script src="script.js" defer></script>
+    <!-- Админ-панель: F12 → Console → admin() -->
+    <script src="admin.js" defer></script>
 </body>
 </html>

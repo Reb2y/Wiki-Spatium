@@ -1,304 +1,111 @@
-/* ==================== БАЗА ДАННЫХ WIKI ==================== */
-const WIKI_DATA = {
-    categories: [
-        { id: "getting-started", name: "Начало работы", icon: "fa-rocket", desc: "Всё, что нужно знать для комфортного старта на сервере Spatium." },
-        { id: "rules", name: "Правила", icon: "fa-book-bookmark", desc: "Свод правил и регламент поведения на проекте." },
-        { id: "commands", name: "Команды", icon: "fa-terminal", desc: "Полный список доступных игровых команд." },
-        { id: "mechanics", name: "Механики", icon: "fa-gears", desc: "Уникальные игровые системы, квесты и особенности выживания." },
-        { id: "blocks", name: "Блоки", icon: "fa-cubes", desc: "Специальные и кастомные блоки, механизмы и декорации." },
-        { id: "items", name: "Предметы", icon: "fa-box-open", desc: "Новые инструменты, броня и кастомные артефакты." },
-        { id: "characters", name: "Персонажи", icon: "fa-users", desc: "Игровые существа и NPC." },
-        { id: "economy", name: "Экономика", icon: "fa-coins", desc: "Торговля, аукцион, валюта и рынки." },
-        { id: "faq", name: "Частые вопросы", icon: "fa-circle-question", desc: "Ответы на популярные вопросы игроков." }
-    ],
-    articles: [
-        {
-            id: "ore-souls",
-            categoryId: "blocks",
-            title: "Руда Душ",
-            subtitle: "Редкая подземная руда, содержащая скрытую энергию душ",
-            image: "img/ore_souls.png",
-            updatedAt: "24 Сен 2026",
-            popular: true,
-            content: `
-                <p><strong>Руда Душ</strong> — редкий подземный блок, добыча которого необходима для создания уникальных артефактов и кастомных предметов на сервере.</p>
+/* ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==================== */
+const DEFAULT_HSL = { h: 39, s: 87, l: 60 }; // золотой акцент
 
-                <h2>Информация о добыче</h2>
-                <div class="table-wrapper">
-                    <table class="wiki-table">
-                        <thead>
-                            <tr>
-                                <th>Параметр</th>
-                                <th>Значение</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Появление руды</td>
-                                <td><strong>Y: 6 и ниже</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Выпадение</td>
-                                <td><a href="#" onclick="event.preventDefault(); navigateTo('article', 'crystal-souls')">Кристалл Душ</a></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+function readSavedHSL() {
+    try {
+        const v = JSON.parse(localStorage.getItem('spatium_glow_hsl'));
+        if (v && Number.isFinite(v.h) && Number.isFinite(v.s) && Number.isFinite(v.l)) return v;
+    } catch (e) {}
+    return { ...DEFAULT_HSL };
+}
 
-                <div class="wiki-callout info">
-                    <i class="fa-solid fa-circle-info"></i>
-                    <div>Для наиболее эффективной добычи руды душ отправляйтесь на самые нижние уровни мира в шахтах.</div>
-                </div>
-            `
-        },
-        {
-            id: "crystal-souls",
-            categoryId: "items",
-            title: "Кристалл Душ",
-            subtitle: "Ценный ресурс, выпадающий из Руды Душ",
-            image: "img/crystal_souls.png",
-            updatedAt: "24 Сен 2026",
-            popular: true,
-            content: `
-                <p><strong>Кристалл Душ</strong> — особый артефактный ресурс, содержащий в себе скрытую энергию. Используется как основной компонент для создания уникального снаряжения.</p>
+const RU_MONTHS = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+function parseRuDate(str) {
+    const m = String(str).trim().split(/\s+/);
+    const idx = RU_MONTHS.indexOf((m[1] || '').toLowerCase().slice(0, 3));
+    return new Date(parseInt(m[2], 10), idx < 0 ? 0 : idx, parseInt(m[0], 10) || 1).getTime();
+}
 
-                <h2>Получение</h2>
-                <p>Можно получить путём добычи <a href="#" onclick="event.preventDefault(); navigateTo('article', 'ore-souls')">Руды Душ</a> в глубоких подземных пещерах.</p>
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
 
-                <h2>Применение</h2>
-                <p>Используется во многих крафтах артефактов и предметов:</p>
+function stripTags(html) {
+    return String(html).replace(/<[^>]*>/g, ' ');
+}
 
-                <div class="table-wrapper">
-                    <table class="wiki-table">
-                        <thead>
-                            <tr>
-                                <th>Предмет / Рецепт</th>
-                                <th>Описание</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><a href="#" onclick="event.preventDefault(); navigateTo('article', 'speed-boots')">Ботинки Скорости</a></td>
-                                <td>Дают постоянный эффект Скорости II при ношении.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+/* индекс для поиска, время чтения и теги считаем один раз, а не при каждом запросе */
+const WORDS_PER_MIN = 180; // русский текст читается чуть медленнее английского
+WIKI_DATA.articles.forEach(a => {
+    const text = stripTags(a.content);
+    a.tags = Array.isArray(a.tags) ? a.tags.map(String) : [];
+    a._search = `${a.title} ${a.subtitle} ${a.tags.join(' ')} ${text}`.toLowerCase();
+    a._read = Math.max(1, Math.round(text.split(/\s+/).filter(Boolean).length / WORDS_PER_MIN));
+});
 
-                <div class="wiki-callout info">
-                    <i class="fa-solid fa-circle-info"></i>
-                    <div>Собирайте кристаллы душ для создания высокоуровневых артефактов и ценного снаряжения!</div>
-                </div>
-            `
-        },
-        {
-            id: "speed-boots",
-            categoryId: "items",
-            title: "Ботинки Скорости",
-            subtitle: "Кастомная броня, увеличивающая скорость передвижения",
-            icon: "fa-shoe-prints",
-            updatedAt: "24 Сен 2026",
-            popular: false,
-            content: `
-                <p><strong>Ботинки Скорости</strong> — уникальный артефакт, дающий владельцу существенный прирост к скорости бега.</p>
+/* кто на кого ссылается (navigateTo('article', 'id') внутри текста) - нужно для «Похожих статей» */
+const ARTICLE_LINKS = {};
+WIKI_DATA.articles.forEach(a => {
+    const out = new Set();
+    const re = /navigateTo\(\s*['"]article['"]\s*,\s*['"]([^'"]+)['"]/g;
+    let m;
+    while ((m = re.exec(a.content))) if (m[1] !== a.id) out.add(m[1]);
+    ARTICLE_LINKS[a.id] = out;
+});
 
-                <h2>Крафт предмета</h2>
-                <p>Для создания требуется несколько <a href="#" onclick="event.preventDefault(); navigateTo('article', 'crystal-souls')">Кристаллов Душ</a> и алмазная броня.</p>
-            `
-        },
-        {
-            id: "custom-blocks",
-            categoryId: "blocks",
-            title: "Функциональные блоки",
-            subtitle: "Особые блоки для автоматизации и украшения базы",
-            icon: "fa-cubes-stacked",
-            updatedAt: "24 Сен 2026",
-            popular: true,
-            content: `
-                <p>На сервере Spatium доступны кастомные блоки с уникальными функциями для ускорения вашего развития.</p>
+function articleById(id) {
+    return WIKI_DATA.articles.find(a => a.id === id);
+}
 
-                <h2>Виды полезных блоков</h2>
-                <div class="table-wrapper">
-                    <table class="wiki-table">
-                        <thead>
-                            <tr>
-                                <th>Блок</th>
-                                <th>Функция</th>
-                                <th>Где получить</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Авто-Скупщик</td>
-                                <td>Автоматически продает поступающие в него ресурсы.</td>
-                                <td>Магазин спавна / Аукцион</td>
-                            </tr>
-                            <tr>
-                                <td>Ускоритель роста</td>
-                                <td>Ускоряет рост ближайших ферм и растений.</td>
-                                <td>Квесты / Крафт</td>
-                            </tr>
-                            <tr>
-                                <td>Магнитный сундук</td>
-                                <td>Притягивает выпавшие рядом предметы в инвенварь.</td>
-                                <td>Донат-магазин / Награды</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+/* ==================== СИСТЕМА УПРАВЛЕНИЯ ВЕРСИЕЙ ==================== */
+function updateVersion() {
+    let currentVer = localStorage.getItem('spatium_wiki_version') || '0.0.0';
+    let parts = currentVer.split('.').map(n => parseInt(n, 10) || 0);
+    while (parts.length < 3) parts.push(0);
+    
+    parts[2] += 1;
+    if (parts[2] >= 10) {
+        parts[2] = 0;
+        parts[1] += 1;
+    }
+    if (parts[1] >= 10) {
+        parts[1] = 0;
+        parts[0] += 1;
+    }
 
-                <div class="wiki-callout info">
-                    <i class="fa-solid fa-circle-info"></i>
-                    <div>Рецепты крафта кастомных блоков можно посмотреть прямо в игре через меню <code>/recipes</code>.</div>
-                </div>
-            `
-        },
-        {
-            id: "start-guide",
-            categoryId: "getting-started",
-            title: "Быстрый старт на Spatium",
-            subtitle: "Первые шаги после подключения к серверу",
-            icon: "fa-rocket",
-            updatedAt: "22 Сен 2026",
-            popular: true,
-            content: `
-                <p>Добро пожаловать на Minecraft-сервер <strong>Spatium</strong>! Ваше приключение начинается на центральном спавне нашего мира.</p>
+    const newVer = `v${parts.join('.')}`;
+    localStorage.setItem('spatium_wiki_version', parts.join('.'));
 
-                <div class="wiki-callout info">
-                    <i class="fa-solid fa-circle-info"></i>
-                    <div><strong>IP адрес для подключения:</strong> <code>play.spatium.mc</code> (Версия 1.20.4)</div>
-                </div>
+    const versionElem = document.getElementById('sidebarVersion');
+    if (versionElem) {
+        versionElem.innerText = newVer;
+    }
+}
 
-                <h2>1. Появление на Спавне</h2>
-                <p>После входа в игру вы окажетесь в безопасной зоне. Здесь расположены торговцы, автошахта и навигационные зоны.</p>
+/* ==================== ВОСПРОИЗВЕДЕНИЕ ЗВУКА КЛИКА ==================== */
+let selectAudio = null;
 
-                <h2>2. Получение стартового снаряжения</h2>
-                <p>Введите команду ниже, чтобы получить базовый набор выживания (стартовые инструменты, еду и бронекомплект):</p>
-                <pre><code>/kit start</code></pre>
+function playSelectSound() {
+    if (!selectAudio) selectAudio = new Audio('sound/wiki_select.mp3');
+    selectAudio.currentTime = 0;
+    selectAudio.play().catch(() => {});
+}
 
-                <h2>3. Отправка в дикий мир</h2>
-                <p>Чтобы начать строительство базы и исследование, используйте команду случайной телепортации в неизведанные земли:</p>
-                <pre><code>/rtp</code></pre>
+/* ==================== ПУНКТЫ БЕЗОПАСНОГО РЕЖИМА ==================== */
+const SAFE_OPTIONS = [
+    { id: 'glitch',     name: 'Глитч при переходе в консоль', desc: 'Вместо мигающего глитча — мягкое затемнение' },
+    { id: 'consolefx',  name: 'Глитч на кнопке «В консоль»',  desc: 'Без дрожания и мерцания при наведении' },
+    { id: 'glowmotion', name: 'Движение свечения',            desc: 'Фоновое свечение почти не двигается' },
+    { id: 'glowdim',    name: 'Яркость свечения',             desc: 'Свечение тусклее и размытее' },
+    { id: 'loader',     name: 'Анимации загрузки',            desc: 'Спати просто заполняется вместо сценок' }
+];
 
-                <div class="wiki-callout warning">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                    <div>Перед выходом в дикий мир убедитесь, что вы забрали стартовый набор и готовы к путешествиям!</div>
-                </div>
-            `
-        },
-        {
-            id: "server-rules",
-            categoryId: "rules",
-            title: "Общие правила сервера",
-            subtitle: "Свод обязательных правил для всех участников сообщества",
-            icon: "fa-book-bookmark",
-            updatedAt: "20 Сен 2026",
-            popular: true,
-            content: `
-                <p>Соблюдение этих правил обеспечивает комфортную и честную игру для всех игроков Spatium.</p>
-
-                <h2>1. Читы и стороннее ПО</h2>
-                <p>Использование любых модификаций, дающих нечестное преимущество (X-Ray, Fly, KillAura и т.д.), строго запрещено.</p>
-                <ul>
-                    <li><strong>Наказание:</strong> Бессрочная блокировка аккаунта.</li>
-                </ul>
-
-                <h2>2. Поведение в игре</h2>
-                <p>Запрещено намеренное использование багов сервера для получения выгоды, а также заманивание игроков в смертельные ловушки.</p>
-
-                <h2>3. Общение в чате</h2>
-                <p>Уважайте других игроков. В глобальном и локальном чатах запрещены:</p>
-                <div class="table-wrapper">
-                    <table class="wiki-table">
-                        <thead>
-                            <tr>
-                                <th>Нарушение</th>
-                                <th>Описание</th>
-                                <th>Наказание</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Оскорбления / Спам</td>
-                                <td>Агрессивное поведение, мат, частая отправка одинаковых сообщений.</td>
-                                <td>Мут от 30 мин до 5 часов</td>
-                            </tr>
-                            <tr>
-                                <td>Реклама</td>
-                                <td>Упоминание чужих серверов, сторонних ресурсов.</td>
-                                <td>Перманентный бан</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            `
-        },
-        {
-            id: "basic-commands",
-            categoryId: "commands",
-            title: "Основные игровые команды",
-            subtitle: "Шпаргалка по командам для повседневной игры",
-            icon: "fa-terminal",
-            updatedAt: "18 Сен 2026",
-            popular: false,
-            content: `
-                <p>Список наиболее часто используемых команд на сервере Spatium:</p>
-
-                <h2>Команды телепортации</h2>
-                <ul>
-                    <li><code>/spawn</code> — Телепортироваться на Главный Спавн.</li>
-                    <li><code>/sethome [название]</code> — Установить точку дома.</li>
-                    <li><code>/home [название]</code> — Телепортироваться домой.</li>
-                    <li><code>/tpa [ник]</code> — Отправить запрос на телепортацию к игроку.</li>
-                </ul>
-
-                <h2>Команды взаимодействия и торговли</h2>
-                <ul>
-                    <li><code>/pay [ник] [сумма]</code> — Перевести деньги игроку.</li>
-                    <li><code>/ah</code> — Открыть глобальный аукцион сервера.</li>
-                    <li><code>/menu</code> — Главное меню игрока.</li>
-                </ul>
-            `
-        },
-        {
-            id: "world-exploration",
-            categoryId: "mechanics",
-            title: "Исследование мира и Квесты",
-            subtitle: "Как развиваться и получать уникальные награды",
-            icon: "fa-compass",
-            updatedAt: "24 Сен 2026",
-            popular: true,
-            content: `
-                <p>На сервере Spatium вас ждет увлекательное выживание с уникальными механиками квестов и наград.</p>
-
-                <h2>1. Выполнение квестов</h2>
-                <p>На спавне расположены NPC, которые выдают ежедневные задания на добычу ресурсов, охоту на мобов и исследование данжей.</p>
-
-                <h2>2. Повышение уровня</h2>
-                <p>За выполнение заданий вы получаете опыт и серверную валюту, которую можно потратить на рынке или на аукционе.</p>
-
-                <div class="wiki-callout success">
-                    <i class="fa-solid fa-lightbulb"></i>
-                    <div><strong>Совет:</strong> Открывайте ежедневные награды с помощью команды <code>/bonus</code>!</div>
-                </div>
-            `
-        }
-    ]
-};
-
-/* ==================== ПРОБЛЕМЫ И ПРОВЕРКА МОБИЛЬНОСТИ ==================== */
-function isMobileDevice() {
-    return window.innerWidth <= 768;
+function readSafeOpts() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem('spatium_safe_opts') || '{}') || {}; } catch (e) {}
+    const opts = {};
+    SAFE_OPTIONS.forEach(o => { opts[o.id] = saved[o.id] !== false; });
+    return opts;
 }
 
 /* ==================== СОСТОЯНИЕ ПРИЛОЖЕНИЯ ==================== */
 let state = {
     theme: localStorage.getItem('spatium_theme') || 'dark',
     epilepsySafe: localStorage.getItem('spatium_epilepsy_safe') === 'true',
-    glowPosition: isMobileDevice() ? 'center' : (localStorage.getItem('spatium_glow_position') || 'left'),
+    safeOpts: readSafeOpts(),
+    glowPosition: localStorage.getItem('spatium_glow_position') || 'left',
     glowEnabled: localStorage.getItem('spatium_glow_enabled') !== 'false',
-    customGlowColor: localStorage.getItem('spatium_custom_glow_color') || null, // Сохраняем строку "h,s,l"
-    colorHSL: { h: 180, s: 80, l: 50 },
+    colorHSL: readSavedHSL(),
     currentPage: 'home',
     currentParam: null
 };
@@ -311,66 +118,35 @@ const GLOW_POSITIONS = [
 
 /* ==================== ИНИЦИАЛИЗАЦИЯ ==================== */
 document.addEventListener('DOMContentLoaded', () => {
+    localStorage.removeItem('spatium_glow_shape');
     initTheme();
     initGlowPosition();
     initGlowState();
-    initCustomColor();
     initEpilepsyCheck();
     initGlowButtonEvents();
     initColorWheel();
+    applyGlowColor();
     renderSidebar();
-    updateMobileSettingsUI();
+    updateVersion();
+    syncBookmarkUI();
     handleRoute();
 
-    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-    const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
-
-    if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileSidebar);
-    if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', toggleMobileSidebar);
-    if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleMobileSidebar);
-
-    const desktopThemeBtn = document.getElementById('themeToggleBtn');
-    if (desktopThemeBtn) desktopThemeBtn.addEventListener('click', toggleTheme);
-
-    window.addEventListener('resize', () => {
-        if (isMobileDevice() && state.glowPosition !== 'center') {
-            state.glowPosition = 'center';
-            applyGlowPositionClass('center');
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('button, a, .category-card, .article-card, .article-list-item, .logo')) {
+            playSelectSound();
         }
     });
+
+    document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+        document.getElementById('sidebar').classList.toggle('open');
+    });
+
+    document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);
 });
-
-function toggleMobileSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const isOpen = sidebar.classList.contains('open');
-
-    if (isOpen) {
-        sidebar.classList.remove('open');
-        overlay.classList.remove('active');
-    } else {
-        sidebar.classList.add('open');
-        overlay.classList.add('active');
-    }
-}
-
-function toggleMobileSearch() {
-    const bar = document.getElementById('mobileSearchBar');
-    const input = document.getElementById('mobileSearchInput');
-    bar.classList.toggle('active');
-    if (bar.classList.contains('active')) {
-        input.focus();
-    }
-}
 
 /* ==================== УПРАВЛЕНИЕ СВЕЧЕНИЕМ ФОНА ==================== */
 function initGlowPosition() {
-    if (isMobileDevice()) {
-        applyGlowPositionClass('center');
-    } else {
-        applyGlowPositionClass(state.glowPosition);
-    }
+    applyGlowPositionClass(state.glowPosition);
 }
 
 function initGlowState() {
@@ -382,7 +158,16 @@ function initGlowState() {
         container.classList.remove('glow-disabled');
         document.body.classList.remove('glow-off');
     }
-    updateMobileSettingsUI();
+    updateGlowPowerUI();
+}
+
+function updateGlowPowerUI() {
+    const btn = document.getElementById('glowPowerBtn');
+    if (!btn) return;
+    btn.classList.toggle('is-off', !state.glowEnabled);
+    btn.setAttribute('aria-pressed', String(state.glowEnabled));
+    document.getElementById('glowPowerLabel').textContent =
+        state.glowEnabled ? 'Выключить свечение' : 'Включить свечение';
 }
 
 function toggleGlowEnabled() {
@@ -392,8 +177,6 @@ function toggleGlowEnabled() {
 }
 
 function toggleGlowPosition() {
-    if (isMobileDevice()) return;
-
     const currentIndex = GLOW_POSITIONS.findIndex(p => p.id === state.glowPosition);
     const nextIndex = (currentIndex + 1) % GLOW_POSITIONS.length;
     const nextPos = GLOW_POSITIONS[nextIndex].id;
@@ -402,7 +185,6 @@ function toggleGlowPosition() {
     localStorage.setItem('spatium_glow_position', nextPos);
     
     applyGlowPositionClass(nextPos);
-    updateMobileSettingsUI();
 }
 
 function applyGlowPositionClass(pos) {
@@ -410,154 +192,174 @@ function applyGlowPositionClass(pos) {
     document.body.classList.add(`glow-${pos}`);
 }
 
-/* ==================== ОБРАБОТЧИКИ ПКМ / ЗАЖАТИЯ ==================== */
-let holdTimer = null;
-let isHoldActionTriggered = false;
-
+/* ==================== ОБРАБОТЧИКИ ПКМ / ЛКМ ==================== */
 function initGlowButtonEvents() {
-    const btn = document.getElementById('glowToggleBtn');
-    if (!btn) return;
+    const toggleBtn = document.getElementById('glowToggleBtn');
 
-    btn.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        toggleGlowEnabled();
+    toggleBtn.addEventListener('click', (e) => {
+        toggleGlowPosition();
     });
 
-    const startHold = (e) => {
-        if (e.type === 'mousedown' && e.button !== 0) return;
-        isHoldActionTriggered = false;
-
-        holdTimer = setTimeout(() => {
-            isHoldActionTriggered = true;
-            toggleColorPickerModal(true);
-        }, 400);
-    };
-
-    const endHold = (e) => {
-        if (e.type === 'mouseup' && e.button !== 0) return;
-        clearTimeout(holdTimer);
-
-        if (!isHoldActionTriggered) {
-            toggleGlowPosition();
-        }
-    };
-
-    btn.addEventListener('mousedown', startHold);
-    btn.addEventListener('touchstart', startHold, { passive: true });
-
-    btn.addEventListener('mouseup', endHold);
-    btn.addEventListener('touchend', endHold);
-
-    btn.addEventListener('mouseleave', () => clearTimeout(holdTimer));
+    toggleBtn.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        toggleGlowEnabled();
+        playSelectSound();
+    });
 }
 
-/* ==================== КРУГЛАЯ ПАЛИТРА И ПОЛЗУНКИ ==================== */
-function initCustomColor() {
-    if (state.customGlowColor) {
-        const parts = state.customGlowColor.split(',').map(Number);
-        if (parts.length === 3) {
-            state.colorHSL = { h: parts[0], s: parts[1], l: parts[2] };
-            applyHSLColor(state.colorHSL);
-        }
-    }
-}
-
-function applyHSLColor(hsl) {
-    const root = document.documentElement;
-    root.style.setProperty('--glow-color-1', `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 0.45)`);
-    root.style.setProperty('--glow-color-2', `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 0.35)`);
-    root.style.setProperty('--glow-color-3', `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 0.25)`);
-}
-
-function hslToRgb(h, s, l) {
-    s /= 100;
-    l /= 100;
-    const k = n => (n + h / 30) % 12;
-    const a = s * Math.min(l, 1 - l);
-    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-    return [Math.round(255 * f(0)), Math.round(255 * f(8)), Math.round(255 * f(4))];
-}
-
-function rgbToHex(r, g, b) {
-    return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
-}
+/* ==================== КРУГОВАЯ ПАЛИТРА И ЦВЕТА СВЕЧЕНИЯ ==================== */
+let wheelCanvas, wheelCtx;
+let isDraggingWheel = false;
 
 function initColorWheel() {
-    const canvas = document.getElementById('colorWheelCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const radius = canvas.width / 2;
+    wheelCanvas = document.getElementById('colorWheel');
+    if (!wheelCanvas) return;
+    wheelCtx = wheelCanvas.getContext('2d');
 
-    // Отрисовка цветового круга (Hue/Sat)
-    for (let x = -radius; x < radius; x++) {
-        for (let y = -radius; y < radius; y++) {
-            const distance = Math.sqrt(x * x + y * y);
-            if (distance <= radius) {
-                let angle = Math.atan2(y, x) * (180 / Math.PI);
-                if (angle < 0) angle += 360;
-                const sat = (distance / radius) * 100;
-                ctx.fillStyle = `hsl(${angle}, ${sat}%, 50%)`;
-                ctx.fillRect(x + radius, y + radius, 1, 1);
-            }
+    // колесо рисуется при первом открытии окна настроек
+    wheelCanvas.addEventListener('mousedown', startWheelDrag);
+    wheelCanvas.addEventListener('touchstart', (e) => startWheelDrag(e.touches[0]), { passive: true });
+
+    document.getElementById('hueSlider').addEventListener('input', (e) => {
+        state.colorHSL.h = parseInt(e.target.value);
+        updateColorFromHSL();
+    });
+
+    document.getElementById('satSlider').addEventListener('input', (e) => {
+        state.colorHSL.s = parseInt(e.target.value);
+        updateColorFromHSL();
+    });
+
+    document.getElementById('lightSlider').addEventListener('input', (e) => {
+        state.colorHSL.l = parseInt(e.target.value);
+        updateColorFromHSL();
+    });
+
+    document.getElementById('hexInput').addEventListener('change', (e) => {
+        let val = e.target.value.trim();
+        if (!val.startsWith('#')) val = '#' + val;
+        if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+            const hsl = hexToHSL(val);
+            state.colorHSL = hsl;
+            updateColorFromHSL();
+        } else {
+            updateColorUI();
         }
-    }
-
-    // Обработка кликов/перетаскивания по кругу
-    let isDraggingWheel = false;
-
-    const handleWheelMove = (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-        const x = clientX - rect.left - radius;
-        const y = clientY - rect.top - radius;
-        const distance = Math.min(Math.sqrt(x * x + y * y), radius);
-
-        let angle = Math.atan2(y, x) * (180 / Math.PI);
-        if (angle < 0) angle += 360;
-
-        state.colorHSL.h = Math.round(angle);
-        state.colorHSL.s = Math.round((distance / radius) * 100);
-
-        updateColorPickerUI(true);
-    };
-
-    canvas.addEventListener('mousedown', (e) => { isDraggingWheel = true; handleWheelMove(e); });
-    window.addEventListener('mousemove', (e) => { if (isDraggingWheel) handleWheelMove(e); });
-    window.addEventListener('mouseup', () => { isDraggingWheel = false; });
-
-    canvas.addEventListener('touchstart', (e) => { isDraggingWheel = true; handleWheelMove(e); }, { passive: true });
-    window.addEventListener('touchmove', (e) => { if (isDraggingWheel) handleWheelMove(e); });
-    window.addEventListener('touchend', () => { isDraggingWheel = false; });
-
-    // Ползунки
-    const hueSlider = document.getElementById('hueSlider');
-    const satSlider = document.getElementById('satSlider');
-    const lightSlider = document.getElementById('lightSlider');
-
-    hueSlider.addEventListener('input', (e) => { state.colorHSL.h = Number(e.target.value); updateColorPickerUI(false); });
-    satSlider.addEventListener('input', (e) => { state.colorHSL.s = Number(e.target.value); updateColorPickerUI(false); });
-    lightSlider.addEventListener('input', (e) => { state.colorHSL.l = Number(e.target.value); updateColorPickerUI(false); });
+    });
 }
 
-function updateColorPickerUI(fromWheel = false) {
+let wheelDrawn = false;
+
+function drawWheel() {
+    const size = wheelCanvas.width;
+    const radius = size / 2;
+    const img = wheelCtx.createImageData(size, size);
+    const data = img.data;
+
+    for (let py = 0; py < size; py++) {
+        for (let px = 0; px < size; px++) {
+            const x = px - radius;
+            const y = py - radius;
+            const dist = Math.sqrt(x * x + y * y);
+            if (dist > radius) continue;
+
+            let angle = Math.atan2(y, x) * (180 / Math.PI);
+            if (angle < 0) angle += 360;
+
+            const { r, g, b } = hslToRgb(angle, (dist / radius) * 100, 50);
+            const i = (py * size + px) * 4;
+            data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
+        }
+    }
+    wheelCtx.putImageData(img, 0, 0);
+    wheelDrawn = true;
+}
+
+function onWheelMouseMove(e) { handleWheelMove(e); }
+function onWheelTouchMove(e) { handleWheelMove(e.touches[0]); }
+
+function startWheelDrag(e) {
+    isDraggingWheel = true;
+    window.addEventListener('mousemove', onWheelMouseMove);
+    window.addEventListener('mouseup', stopWheelDrag);
+    window.addEventListener('touchmove', onWheelTouchMove, { passive: true });
+    window.addEventListener('touchend', stopWheelDrag);
+    handleWheelMove(e);
+}
+
+function stopWheelDrag() {
+    isDraggingWheel = false;
+    window.removeEventListener('mousemove', onWheelMouseMove);
+    window.removeEventListener('mouseup', stopWheelDrag);
+    window.removeEventListener('touchmove', onWheelTouchMove);
+    window.removeEventListener('touchend', stopWheelDrag);
+}
+
+function handleWheelMove(e) {
+    if (!isDraggingWheel) return;
+
+    const rect = wheelCanvas.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    const x = e.clientX - cx;
+    const y = e.clientY - cy;
+
+    const radius = rect.width / 2;
+    const dist = Math.min(Math.sqrt(x * x + y * y), radius);
+
+    let angle = Math.atan2(y, x) * (180 / Math.PI);
+    if (angle < 0) angle += 360;
+
+    const sat = Math.round((dist / radius) * 100);
+
+    state.colorHSL.h = Math.round(angle);
+    state.colorHSL.s = sat;
+
+    updateColorFromHSL();
+}
+
+let colorRaf = 0;
+let colorSaveTimer = 0;
+
+function updateColorFromHSL() {
+    if (!state.glowEnabled) {
+        toggleGlowEnabled();
+    }
+
+    // обновляем DOM не чаще одного раза за кадр, а в localStorage пишем с задержкой
+    if (!colorRaf) {
+        colorRaf = requestAnimationFrame(() => {
+            colorRaf = 0;
+            applyGlowColor();
+            updateColorUI();
+        });
+    }
+    clearTimeout(colorSaveTimer);
+    colorSaveTimer = setTimeout(() => {
+        localStorage.setItem('spatium_glow_hsl', JSON.stringify(state.colorHSL));
+    }, 250);
+}
+
+function updateColorUI() {
     const { h, s, l } = state.colorHSL;
 
-    // Обновляем ползунки и текстовые значения
     document.getElementById('hueSlider').value = h;
     document.getElementById('satSlider').value = s;
     document.getElementById('lightSlider').value = l;
 
-    document.getElementById('hueVal').textContent = `${h}°`;
-    document.getElementById('satVal').textContent = `${s}%`;
-    document.getElementById('lightVal').textContent = `${l}%`;
+    document.getElementById('hueValue').innerText = `${h}°`;
+    document.getElementById('satValue').innerText = `${s}%`;
+    document.getElementById('lightValue').innerText = `${l}%`;
 
-    // Позиционируем маркер на круге
-    const canvas = document.getElementById('colorWheelCanvas');
+    const hex = hslToHex(h, s, l);
+    document.getElementById('hexInput').value = hex;
+    document.getElementById('colorPreviewBox').style.backgroundColor = hex;
+
+    const wheelWrapper = document.querySelector('.wheel-wrapper');
     const handle = document.getElementById('wheelHandle');
-    if (canvas && handle) {
-        const radius = canvas.width / 2;
+    if (wheelWrapper && handle) {
+        const radius = wheelWrapper.clientWidth / 2;
         const rad = (h * Math.PI) / 180;
         const dist = (s / 100) * radius;
 
@@ -566,49 +368,40 @@ function updateColorPickerUI(fromWheel = false) {
 
         handle.style.left = `${handleX}px`;
         handle.style.top = `${handleY}px`;
-    }
-
-    // Расчет RGB и HEX
-    const [r, g, b] = hslToRgb(h, s, l);
-    const hex = rgbToHex(r, g, b);
-
-    document.getElementById('previewSwatch').style.background = `hsl(${h}, ${s}%, ${l}%)`;
-    document.getElementById('hexCode').textContent = hex;
-    document.getElementById('rgbCode').textContent = `rgb(${r}, ${g}, ${b})`;
-
-    // Сохранение и применение
-    const strHSL = `${h},${s},${l}`;
-    state.customGlowColor = strHSL;
-    localStorage.setItem('spatium_custom_glow_color', strHSL);
-    applyHSLColor(state.colorHSL);
-
-    if (!state.glowEnabled) {
-        toggleGlowEnabled();
+        handle.style.backgroundColor = hex;
     }
 }
 
-function resetGlowColor() {
-    state.customGlowColor = null;
-    localStorage.removeItem('spatium_custom_glow_color');
-
-    state.colorHSL = { h: 180, s: 80, l: 50 };
+function applyGlowColor() {
+    const { h, s, l } = state.colorHSL;
+    const rgb = hslToRgb(h, s, l);
+    const rgbStr = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
 
     const root = document.documentElement;
-    root.style.removeProperty('--glow-color-1');
-    root.style.removeProperty('--glow-color-2');
-    root.style.removeProperty('--glow-color-3');
+    root.style.setProperty('--glow-rgb', rgbStr);
+    root.style.setProperty('--glow-color-1', `rgba(${rgbStr}, 0.6)`);
+    root.style.setProperty('--glow-color-2', `rgba(${rgbStr}, 0.5)`);
+    root.style.setProperty('--glow-color-3', `rgba(${rgbStr}, 0.4)`);
+}
 
-    updateColorPickerUI();
+function resetGlowSettings() {
+    clearTimeout(colorSaveTimer);
+    state.colorHSL = { ...DEFAULT_HSL };
+    
+    localStorage.removeItem('spatium_glow_hsl');
+
+    applyGlowColor();
+    updateColorUI();
     toggleColorPickerModal(false);
 }
 
 function toggleColorPickerModal(show) {
     const modal = document.getElementById('colorPickerModal');
-    if (!modal) return;
     if (show) {
-        updateColorPickerUI();
+        if (wheelCtx && !wheelDrawn) drawWheel();
         modal.classList.add('active');
-    } else {
+        updateColorUI();
+        } else {
         modal.classList.remove('active');
     }
 }
@@ -619,71 +412,65 @@ function closeColorPicker(e) {
     }
 }
 
-/* ==================== МОБИЛЬНЫЕ НАСТРОЙКИ ==================== */
-function toggleMobileSettingsModal(show) {
-    const modal = document.getElementById('mobileSettingsModal');
-    if (!modal) return;
-    if (show) {
-        updateMobileSettingsUI();
-        modal.classList.add('active');
+function hslToRgb(h, s, l) {
+    s /= 100;
+    l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return {
+        r: Math.round(255 * f(0)),
+        g: Math.round(255 * f(8)),
+        b: Math.round(255 * f(4))
+    };
+}
+
+function hslToHex(h, s, l) {
+    const { r, g, b } = hslToRgb(h, s, l);
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+function hexToHSL(hex) {
+    let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return { h: 0, s: 0, l: 50 };
+    let r = parseInt(result[1], 16) / 255;
+    let g = parseInt(result[2], 16) / 255;
+    let b = parseInt(result[3], 16) / 255;
+
+    let max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+
+    if (max === min) {
+        h = s = 0;
     } else {
-        modal.classList.remove('active');
-    }
-}
-
-function closeMobileSettingsModal(e) {
-    if (e.target.id === 'mobileSettingsModal') {
-        toggleMobileSettingsModal(false);
-    }
-}
-
-function openColorPickerFromMobile() {
-    toggleMobileSettingsModal(false);
-    toggleColorPickerModal(true);
-}
-
-function updateMobileSettingsUI() {
-    const mobileThemeBtn = document.getElementById('mobileThemeToggleBtn');
-    if (mobileThemeBtn) {
-        if (state.theme === 'dark') {
-            mobileThemeBtn.innerHTML = '<i class="fa-solid fa-moon"></i> <span>Тёмная</span>';
-            mobileThemeBtn.classList.remove('active');
-        } else {
-            mobileThemeBtn.innerHTML = '<i class="fa-solid fa-sun"></i> <span>Светлая</span>';
-            mobileThemeBtn.classList.add('active');
+        let d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
         }
+        h /= 6;
     }
-
-    const mobileSafeBtn = document.getElementById('mobileSafeToggleBtn');
-    if (mobileSafeBtn) {
-        if (state.epilepsySafe) {
-            mobileSafeBtn.innerHTML = '<i class="fa-solid fa-shield-halved"></i> <span>Вкл</span>';
-            mobileSafeBtn.classList.add('active');
-        } else {
-            mobileSafeBtn.innerHTML = '<i class="fa-solid fa-shield-halved"></i> <span>Выкл</span>';
-            mobileSafeBtn.classList.remove('active');
-        }
-    }
-
-    const mobileGlowBtn = document.getElementById('mobileGlowToggleBtn');
-    if (mobileGlowBtn) {
-        if (state.glowEnabled) {
-            mobileGlowBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> <span>Вкл</span>';
-            mobileGlowBtn.classList.add('active');
-        } else {
-            mobileGlowBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> <span>Выкл</span>';
-            mobileGlowBtn.classList.remove('active');
-        }
-    }
+    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
 }
 
 /* ==================== ЭПИЛЕПСИЯ И БЕЗОПАСНЫЙ РЕЖИМ ==================== */
+// безопасный режим включён И этот пункт отмечен в настройках
+function safeOn(id) {
+    return state.epilepsySafe && state.safeOpts[id] !== false;
+}
+
+function applySafeClasses() {
+    document.body.classList.toggle('epilepsy-safe', state.epilepsySafe);
+    SAFE_OPTIONS.forEach(o => document.body.classList.toggle('safe-' + o.id, safeOn(o.id)));
+    // все функции безопасного режима включены - вся кнопка в зелёной рамке
+    document.body.classList.toggle('safe-all', state.epilepsySafe && SAFE_OPTIONS.every(o => state.safeOpts[o.id] !== false));
+}
+
 function initEpilepsyCheck() {
     const isChoiceMade = localStorage.getItem('spatium_epilepsy_safe') !== null;
-    
-    if (state.epilepsySafe) {
-        document.body.classList.add('epilepsy-safe');
-    }
+    applySafeClasses();
 
     if (!isChoiceMade) {
         document.getElementById('epilepsyModal').classList.add('active');
@@ -693,42 +480,177 @@ function initEpilepsyCheck() {
 function setEpilepsySafeMode(isSafe) {
     state.epilepsySafe = isSafe;
     localStorage.setItem('spatium_epilepsy_safe', isSafe ? 'true' : 'false');
-
-    if (isSafe) {
-        document.body.classList.add('epilepsy-safe');
-    } else {
-        document.body.classList.remove('epilepsy-safe');
-    }
-
+    applySafeClasses();
+    syncSafeSettingsUI();
     document.getElementById('epilepsyModal').classList.remove('active');
-    updateMobileSettingsUI();
 }
 
 function toggleEpilepsyMode() {
     setEpilepsySafeMode(!state.epilepsySafe);
 }
 
+function setSafeOpt(id, value) {
+    state.safeOpts[id] = value;
+    localStorage.setItem('spatium_safe_opts', JSON.stringify(state.safeOpts));
+    applySafeClasses();
+}
+
+function resetSafeOptions() {
+    SAFE_OPTIONS.forEach(o => { state.safeOpts[o.id] = true; });
+    localStorage.removeItem('spatium_safe_opts');
+    applySafeClasses();
+    renderSafeOptions();
+}
+
+function renderSafeOptions() {
+    const list = document.getElementById('safeOptsList');
+    if (!list) return;
+    list.innerHTML = SAFE_OPTIONS.map(o => `
+        <label class="safe-row">
+            <span class="safe-row-text"><b>${o.name}</b><small>${o.desc}</small></span>
+            <input type="checkbox" class="safe-switch" ${state.safeOpts[o.id] ? 'checked' : ''} onchange="setSafeOpt('${o.id}', this.checked)">
+        </label>
+    `).join('');
+    syncSafeSettingsUI();
+}
+
+function syncSafeSettingsUI() {
+    const master = document.getElementById('safeMasterSwitch');
+    if (master) master.checked = state.epilepsySafe;
+    const list = document.getElementById('safeOptsList');
+    if (list) list.classList.toggle('off', !state.epilepsySafe);
+}
+
+function toggleSafeSettings(show) {
+    const modal = document.getElementById('safeSettingsModal');
+    if (show) {
+        renderSafeOptions();
+        modal.classList.add('active');
+    } else {
+        modal.classList.remove('active');
+    }
+}
+
+function closeSafeSettings(e) {
+    if (e.target.id === 'safeSettingsModal') toggleSafeSettings(false);
+}
+
+/* ==================== ПЕРЕХОД В КОНСОЛЬ ====================
+   1) страница «рвётся»: горизонтальные сдвиги + RGB-разъезд, сверху вниз проходит полоса «трекинга» (как на VHS);
+   2) экран схлопывается в светящуюся линию, как старый ТВ/ЭЛТ;
+   3) на чёрном «грузится» терминал Spatium OS (с полосой прогресса), и только потом открывается консоль.
+   В безопасном режиме (пункт «Глитч при переходе») или при prefers-reduced-motion
+   остаётся мягкое затемнение — без искажений и вспышек.                              */
+const CONSOLE_BOOT_LINES = [
+    '> SPATIUM OS // подключение...',
+    '> загрузка ядра .............. OK',
+    '> монтирование /wiki ......... OK'
+];
+let consoleFxBusy = false;
+
+function ensureGlitchFilter() {
+    if (document.getElementById('spGlitchSvg')) return;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `<svg id="spGlitchSvg" width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+        <defs><filter id="spGlitch" x="-6%" y="-2%" width="112%" height="104%" color-interpolation-filters="sRGB">
+            <feTurbulence id="spGlitchNoise" type="fractalNoise" baseFrequency="0 0.05" numOctaves="1" seed="1" result="n"/>
+            <feComponentTransfer in="n" result="n2">
+                <feFuncR type="discrete" tableValues="0.5 0.5 0.5 0.5 0.12 0.5 0.5 0.88 0.5 0.5 0.5 0.28 0.5 0.5 0.72 0.5"/>
+                <feFuncG type="discrete" tableValues="0.5"/>
+            </feComponentTransfer>
+            <feDisplacementMap id="spGlitchDisp" in="SourceGraphic" in2="n2" scale="0" xChannelSelector="R" yChannelSelector="G" result="d"/>
+            <feColorMatrix in="d" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r"/>
+            <feColorMatrix in="d" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g"/>
+            <feColorMatrix in="d" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b"/>
+            <feOffset id="spGlitchR" in="r" dx="0" dy="0" result="r2"/>
+            <feOffset id="spGlitchB" in="b" dx="0" dy="0" result="b2"/>
+            <feBlend in="r2" in2="g" mode="screen" result="rg"/>
+            <feBlend in="rg" in2="b2" mode="screen"/>
+        </filter></defs></svg>`;
+    document.body.appendChild(wrap.firstElementChild);
+}
+
+// «дёргает» параметры фильтра ~18 раз в секунду, амплитуда растёт к концу
+function startGlitchWarp(ms) {
+    const $id = id => document.getElementById(id);
+    const noise = $id('spGlitchNoise'), disp = $id('spGlitchDisp'), r = $id('spGlitchR'), b = $id('spGlitchB');
+    if (!noise || !disp || !r || !b) return () => {};
+    const t0 = performance.now();
+    let last = 0, raf = 0;
+    const loop = now => {
+        if (now - last > 55) {
+            last = now;
+            const k = Math.min(1, (now - t0) / ms);
+            noise.setAttribute('seed', String(Math.floor(Math.random() * 900)));
+            noise.setAttribute('baseFrequency', '0 ' + (0.012 + Math.random() * 0.05).toFixed(3));
+            disp.setAttribute('scale', String(Math.round((30 + k * 90) * (0.5 + Math.random() * 0.5))));
+            const sp = 2 + k * 7;
+            r.setAttribute('dx', (-sp * (0.5 + Math.random())).toFixed(1));
+            b.setAttribute('dx', (sp * (0.5 + Math.random())).toFixed(1));
+        }
+        raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+}
+
 function triggerConsoleTransition(e) {
     e.preventDefault();
+    if (consoleFxBusy) return;
     const targetUrl = e.currentTarget.href;
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const openConsole = () => {
+        const win = window.open(targetUrl, '_blank');
+        if (!win) window.location.href = targetUrl; // попап заблокирован — открываем в этой вкладке
+    };
 
-    if (state.epilepsySafe) {
-        document.body.classList.add('safe-fade-active');
-        setTimeout(() => {
-            window.open(targetUrl, "_blank");
-            setTimeout(() => {
-                document.body.classList.remove('safe-fade-active');
-            }, 500);
-        }, 500);
-    } else {
-        document.body.classList.add('glitch-active');
-        setTimeout(() => {
-            window.open(targetUrl, "_blank");
-            setTimeout(() => {
-                document.body.classList.remove('glitch-active');
-            }, 500);
-        }, 800);
+    if (safeOn('glitch') || reduced) { // мягкое затемнение
+        const cls = 'safe-fade-active';
+        document.body.classList.add(cls);
+        setTimeout(() => { openConsole(); setTimeout(() => document.body.classList.remove(cls), 500); }, 500);
+        return;
     }
+
+    consoleFxBusy = true;
+    ensureGlitchFilter();
+    const body = document.body;
+    const ov = document.createElement('div');
+    ov.className = 'cg-overlay';
+    ov.setAttribute('aria-hidden', 'true');
+    ov.innerHTML = '<div class="cg-track"></div><div class="cg-shutter cg-top"></div><div class="cg-shutter cg-bot"></div><div class="cg-beam"></div><pre class="cg-term"></pre>';
+    body.appendChild(ov);
+    const term = ov.querySelector('.cg-term');
+    const timers = [];
+    const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+
+    // терминал: строки + полоса прогресса + итоговая строка
+    const lines = [];
+    const draw = ok => { term.innerHTML = lines.join('\n') + (ok ? '\n<b>> доступ разрешён</b>' : ''); };
+    const BAR = 10;
+    const bar = n => '> [' + '█'.repeat(n) + '░'.repeat(BAR - n) + '] ' + (n * 10) + '%';
+
+    body.classList.add('cg-active', 'cg-warp');
+    const stopWarp = startGlitchWarp(380);
+
+    at(380, () => ov.classList.add('cg-close'));                                   // шторки сходятся
+    at(640, () => { body.classList.remove('cg-warp'); stopWarp(); ov.classList.add('cg-beam-on'); }); // линия
+    at(820, () => ov.classList.add('cg-beam-off'));                                // линия гаснет в точку
+    at(880, () => {                                                                // «загрузка» терминала
+        ov.classList.add('cg-term-on');
+        CONSOLE_BOOT_LINES.forEach((line, i) => at(i * 90, () => { lines.push(line); draw(false); }));
+        const t1 = CONSOLE_BOOT_LINES.length * 90;
+        at(t1, () => { lines.push(bar(0)); draw(false); });
+        for (let n = 1; n <= BAR; n++) at(t1 + n * 22, () => { lines[lines.length - 1] = bar(n); draw(false); });
+        at(t1 + BAR * 22 + 40, () => draw(true));                                  // «доступ разрешён»
+    });
+    const OPEN_AT = 880 + CONSOLE_BOOT_LINES.length * 90 + BAR * 22 + 40 + 170;
+    at(OPEN_AT, openConsole);
+    at(OPEN_AT + 250, () => ov.classList.add('cg-out'));                           // возвращаемся на сайт
+    at(OPEN_AT + 750, () => {
+        ov.remove();
+        body.classList.remove('cg-active', 'cg-warp');
+        consoleFxBusy = false;
+    });
 }
 
 /* ==================== ТЕМЫ И ЛОГОТИП ==================== */
@@ -742,54 +664,533 @@ function toggleTheme() {
     localStorage.setItem('spatium_theme', state.theme);
     document.documentElement.setAttribute('data-theme', state.theme);
     updateThemeAssets();
-    updateMobileSettingsUI();
 }
 
 function updateThemeAssets() {
     const btn = document.getElementById('themeToggleBtn');
     const logo = document.getElementById('siteLogo');
 
-    if (btn) {
-        btn.innerHTML = state.theme === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
-    }
-
-    if (logo) {
-        logo.src = state.theme === 'dark' ? 'img/spatium_logo_black.png' : 'img/spatium_logo_white.png';
+    if (state.theme === 'dark') {
+        btn.innerHTML = '<i class="fa-solid fa-sun"></i>';
+        logo.src = 'img/spatium_logo_black.png';
+    } else {
+        btn.innerHTML = '<i class="fa-solid fa-moon"></i>';
+        logo.src = 'img/spatium_logo_white.png';
     }
 }
 
-/* ==================== НАВИГАЦИЯ ==================== */
-function navigateTo(page, param = null) {
+/* ==================== НАВИГАЦИЯ И РОУТИНГ ==================== */
+function navigateTo(page, param = null, push = true) {
     state.currentPage = page;
     state.currentParam = param;
-    
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('sidebarOverlay').classList.remove('active');
 
-    const searchBar = document.getElementById('mobileSearchBar');
-    if (searchBar) searchBar.classList.remove('active');
-    
+    document.getElementById('sidebar').classList.remove('open');
+
     const navHomeBtn = document.getElementById('navHome');
     if (navHomeBtn) {
         navHomeBtn.classList.toggle('active', page === 'home');
     }
+    const navBmBtn = document.getElementById('navBookmarks');
+    if (navBmBtn) {
+        navBmBtn.classList.toggle('active', page === 'bookmarks');
+    }
+    document.body.classList.toggle('map-mode', page === 'map');
+    const navMapBtn = document.getElementById('navMap');
+    if (navMapBtn) {
+        navMapBtn.classList.toggle('active', page === 'map');
+    }
+
+    if (push) {
+        const hash = page === 'home' ? '#/' : (param == null ? `#/${page}` : `#/${page}/${encodeURIComponent(param)}`);
+        try { history.pushState(null, '', hash); } catch (e) {}
+    }
+
+    document.body.classList.remove('map-ready');
+    if (page === 'map') ensureMapFrame(); // карта начинает грузиться уже во время фейковой загрузки
 
     renderSidebar();
-    renderContent();
+    startFakeLoad(renderContent);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function handleRoute() {
-    renderContent();
+    if (/^#heading-/.test(location.hash)) return;
+    if (/^#\/bookmarks\/?$/.test(location.hash)) {
+        navigateTo('bookmarks', null, false);
+        return;
+    }
+    if (/^#\/map\/?$/.test(location.hash)) {
+        navigateTo('map', null, false);
+        return;
+    }
+    const m = location.hash.match(/^#\/(category|article|search)\/(.+)$/);
+    if (m) {
+        let p = m[2];
+        try { p = decodeURIComponent(p); } catch (e) {}
+        navigateTo(m[1], p, false);
+    } else {
+        navigateTo('home', null, false);
+    }
+}
+
+window.addEventListener('popstate', handleRoute);
+
+/* ==================== ФЕЙК-ЗАГРУЗКА СТРАНИЦ ==================== */
+let loadToken = 0;
+let loadTimers = [];
+
+function getLoaderBar() {
+    let bar = document.getElementById('pageLoader');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'pageLoader';
+        bar.className = 'page-loader';
+        bar.innerHTML = '<div class="page-loader-fill"></div>';
+        document.body.appendChild(bar);
+    }
+    return bar;
+}
+
+const SPATI_SVG = `
+<svg viewBox="0 0 9 10" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <g class="sl-body">
+        <rect x="2" y="0" width="5" height="1"/>
+        <rect x="1" y="1" width="7" height="1"/>
+        <rect x="0" y="2" width="9" height="7"/>
+        <rect x="0" y="9" width="2" height="1"/>
+        <rect x="3" y="9" width="3" height="1"/>
+        <rect x="7" y="9" width="2" height="1"/>
+    </g>
+    <g class="sl-eyes">
+        <rect class="sl-eye" x="3" y="3" width="1" height="1"/>
+        <rect class="sl-eye" x="5" y="3" width="1" height="1"/>
+    </g>
+    <rect class="sl-mouth" x="4" y="5" width="1" height="2"/>
+</svg>`;
+
+// Варианты загрузки: что делает Спати и что пишется в облачке над ним
+const SPATI_VARIANTS = {
+    sleep:  { text: 'ХРРР',  end: 'surprised' },  // спит на боку, потом резко просыпается
+    look:   { text: '...',   end: 'happy' },      // осматривается по сторонам
+    dance:  { text: 'ЛА-ЛА', end: 'happy' },      // пританцовывает
+    dizzy:  { text: '@_@',   end: 'surprised' },  // кружится
+    think:  { text: 'ХММ',   end: 'surprised' },  // задумался
+    yawn:   { text: 'АААХ', end: 'happy' },      // зевает и потягивается
+    hiccup: { text: 'ИК',    end: 'happy' },      // икает
+    shiver: { text: 'БРР',   end: 'happy' },      // дрожит от холода
+    peek:   { text: 'КУ-КУ',  end: 'surprised' },  // прячется и выглядывает
+    sneeze: { text: 'АПЧХИ', end: 'happy' },      // собирается чихнуть
+    wink:   { text: ';)',    end: 'happy' }       // подмигивает
+};
+
+let hasLoadedOnce = false;
+let lastVariant = null;
+
+function pickVariant() {
+    const keys = Object.keys(SPATI_VARIANTS).filter(k => k !== lastVariant);
+    lastVariant = keys[Math.floor(Math.random() * keys.length)];
+    return lastVariant;
+}
+
+function spatiLoaderHtml(variant, calm, fillMs = 800) {
+    const text = SPATI_VARIANTS[variant].text;
+    return `
+    <div class="spati-loader page-animated v-${variant}${calm ? ' is-calm' : ''}" role="status" aria-label="Загрузка">
+        <div class="sl-bubble" style="--n:${text.length}">
+            <span class="sl-bubble-text">${text}</span>
+        </div>
+        <div class="sl-stage" id="slStage" data-var="${variant}" data-end="${SPATI_VARIANTS[variant].end}" data-state="${calm ? 'calm' : 'idle'}">
+            <div class="sl-glow"></div>
+            <div class="sl-mascot"><div class="sl-lie">${calm
+                ? `<div class="sl-ghost">${SPATI_SVG}</div><div class="sl-fillclip" style="--fill-ms:${fillMs}ms">${SPATI_SVG}</div>`
+                : SPATI_SVG}</div></div>
+        </div>
+        <div class="sl-text">Загрузка</div>
+    </div>`;
+}
+
+function startFakeLoad(render) {
+    const token = ++loadToken;
+    loadTimers.forEach(clearTimeout);
+    loadTimers = [];
+
+    const reduce = safeOn('loader') || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const first = !hasLoadedOnce;
+    hasLoadedOnce = true;
+
+    // сколько длится «занятие» и сколько - финальная реакция; каждый раз случайно
+    const rnd = (min, max) => Math.round(min + Math.random() * (max - min));
+    const idleMs = reduce ? 0 : (first ? rnd(900, 2000) : rnd(300, 1200));
+    const endMs  = reduce ? rnd(700, 1200) : (first ? rnd(550, 950) : rnd(350, 700));
+    const total = idleMs + endMs;
+
+    const bar = getLoaderBar();
+    const fill = bar.firstElementChild;
+    bar.classList.remove('done');
+    fill.style.transition = 'none';
+    fill.style.transform = 'scaleX(0)';
+    void fill.offsetWidth;
+    bar.classList.add('active');
+
+    const setP = (p, ms) => {
+        fill.style.transition = `transform ${ms}ms cubic-bezier(0.22, 0.8, 0.3, 1)`;
+        fill.style.transform = `scaleX(${p})`;
+    };
+    const at = (ms, fn) => loadTimers.push(setTimeout(() => { if (token === loadToken) fn(); }, ms));
+
+    document.getElementById('mainContent').innerHTML = spatiLoaderHtml(pickVariant(), reduce, endMs);
+
+    at(30, () => setP(0.6, Math.max(idleMs, 200)));
+
+    if (!reduce) {
+        at(idleMs, () => {
+            const stage = document.getElementById('slStage');
+            if (stage) {
+                stage.dataset.state = 'finish';
+                stage.parentElement.classList.add('is-finish');
+            }
+            setP(0.92, endMs * 0.6);
+        });
+    } else {
+        at(30, () => setP(0.95, endMs * 0.9));
+    }
+
+    at(total, () => {
+        setP(1, 160);
+        render();
+        loadTimers.push(setTimeout(() => {
+            if (token !== loadToken) return;
+            bar.classList.add('done');
+            bar.classList.remove('active');
+        }, 200));
+    });
+}
+
+/* ==================== ЗАКЛАДКИ, ИСТОРИЯ, ОТЗЫВЫ (localStorage) ==================== */
+const LS_BOOKMARKS = 'spatium_bookmarks';
+const LS_HISTORY = 'spatium_history';
+const LS_VOTES = 'spatium_votes';
+const HISTORY_LIMIT = 20;
+
+function lsRead(key, fallback) {
+    try {
+        const v = JSON.parse(localStorage.getItem(key));
+        return v == null ? fallback : v;
+    } catch (e) { return fallback; }
+}
+function lsWrite(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+}
+
+/* ---------- закладки ---------- */
+function getBookmarks() {
+    const raw = lsRead(LS_BOOKMARKS, []);
+    return Array.isArray(raw) ? raw.filter(id => articleById(id)) : [];
+}
+
+function isBookmarked(id) {
+    return getBookmarks().includes(id);
+}
+
+function toggleBookmark(id, ev) {
+    if (ev) ev.stopPropagation(); // клик по закладке на карточке не должен открывать статью
+    const list = getBookmarks();
+    const i = list.indexOf(id);
+    if (i >= 0) list.splice(i, 1); else list.unshift(id);
+    lsWrite(LS_BOOKMARKS, list);
+    playSelectSound();
+    syncBookmarkUI();
+    if (state.currentPage === 'bookmarks') renderBookmarksInPlace();
+}
+
+function clearBookmarks() {
+    if (!getBookmarks().length || !confirm('Удалить все закладки?')) return;
+    lsWrite(LS_BOOKMARKS, []);
+    syncBookmarkUI();
+    renderBookmarksInPlace();
+}
+
+function bookmarkBtnHtml(id, full) {
+    const on = isBookmarked(id);
+    const label = on ? 'Убрать из закладок' : 'Добавить в закладки';
+    return `<button type="button" class="bm-btn${full ? ' bm-btn-full' : ''}${on ? ' is-on' : ''}" data-bm-id="${id}" aria-pressed="${on}" aria-label="${label}" title="${label}" onclick="toggleBookmark('${id}', event)"><i class="${on ? 'fa-solid' : 'fa-regular'} fa-bookmark"></i>${full ? `<span>${on ? 'В закладках' : 'В закладки'}</span>` : ''}</button>`;
+}
+
+// обновляет все кнопки-закладки на странице и счётчик в шапке
+function syncBookmarkUI() {
+    const list = getBookmarks();
+    document.querySelectorAll('[data-bm-id]').forEach(btn => {
+        const on = list.includes(btn.dataset.bmId);
+        const label = on ? 'Убрать из закладок' : 'Добавить в закладки';
+        btn.classList.toggle('is-on', on);
+        btn.setAttribute('aria-pressed', String(on));
+        btn.setAttribute('aria-label', label);
+        btn.title = label;
+        const icon = btn.querySelector('i');
+        if (icon) icon.className = `${on ? 'fa-solid' : 'fa-regular'} fa-bookmark`;
+        const txt = btn.querySelector('span');
+        if (txt) txt.textContent = on ? 'В закладках' : 'В закладки';
+    });
+    const badge = document.getElementById('bookmarkBadge');
+    if (badge) {
+        badge.textContent = list.length;
+        badge.hidden = list.length === 0;
+    }
+}
+
+/* ---------- история просмотров ---------- */
+function getHistory() {
+    const raw = lsRead(LS_HISTORY, []);
+    return Array.isArray(raw) ? raw.filter(h => h && articleById(h.id)) : [];
+}
+
+function addToHistory(id) {
+    const list = getHistory().filter(h => h.id !== id);
+    list.unshift({ id, t: Date.now() });
+    lsWrite(LS_HISTORY, list.slice(0, HISTORY_LIMIT));
+}
+
+function clearHistory() {
+    try { localStorage.removeItem(LS_HISTORY); } catch (e) {}
+    document.querySelectorAll('[data-history-block]').forEach(el => el.remove());
+}
+
+function timeAgo(ts) {
+    const sec = Math.max(0, (Date.now() - ts) / 1000);
+    if (sec < 60) return 'только что';
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min} мин назад`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `${h} ч назад`;
+    const d = Math.floor(h / 24);
+    if (d === 1) return 'вчера';
+    if (d < 7) return `${d} дн. назад`;
+    return new Date(ts).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+}
+
+function historyBlockHtml(limit) {
+    const items = getHistory().slice(0, limit);
+    if (!items.length) return '';
+    return `
+        <div class="info-block history-block" data-history-block>
+            <div class="block-head">
+                <div class="section-title" style="margin:0"><i class="fa-solid fa-book-open-reader"></i> Недавно читали</div>
+                <button type="button" class="link-btn" onclick="clearHistory()"><i class="fa-regular fa-trash-can"></i> Очистить</button>
+            </div>
+            <div class="article-list-simple">
+                ${items.map(h => {
+                    const a = articleById(h.id);
+                    return `
+                    <div class="article-list-item" onclick="navigateTo('article', '${a.id}')">
+                        <div class="title-group">
+                            <i class="fa-regular fa-file-lines"></i>
+                            <span>${escapeHtml(a.title)}</span>
+                        </div>
+                        <span class="date">${timeAgo(h.t)}</span>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
+}
+
+/* ---------- «Была ли статья полезной?» ---------- */
+function getVote(id) {
+    const all = lsRead(LS_VOTES, {});
+    return all && typeof all === 'object' ? (all[id] || null) : null;
+}
+
+function setVote(id, value) {
+    let all = lsRead(LS_VOTES, {});
+    if (!all || typeof all !== 'object' || Array.isArray(all)) all = {};
+    if (all[id] === value) delete all[id]; else all[id] = value; // повторный клик снимает голос
+    lsWrite(LS_VOTES, all);
+    refreshFeedback(id);
+}
+
+function feedbackHtml(id) {
+    const v = getVote(id);
+    const btn = (kind, text) => `
+        <button type="button" class="fb-btn${v === kind ? ' is-on' : ''}" data-vote="${kind}" aria-pressed="${v === kind}" onclick="setVote('${id}', '${kind}')">
+            <i class="${v === kind ? 'fa-solid' : 'fa-regular'} fa-thumbs-${kind}"></i> ${text}
+        </button>`;
+    return `
+        <section class="feedback-block" id="feedbackBlock" data-article="${id}" aria-labelledby="fbTitle">
+            <div class="feedback-q" id="fbTitle">Была ли статья полезной?</div>
+            <div class="feedback-btns">${btn('up', 'Да')}${btn('down', 'Нет')}</div>
+            <div class="feedback-msg" role="status">${v ? 'Спасибо за отзыв! Нажмите ещё раз, чтобы отменить.' : ''}</div>
+        </section>`;
+}
+
+function refreshFeedback(id) {
+    const box = document.getElementById('feedbackBlock');
+    if (!box || box.dataset.article !== id) return;
+    const v = getVote(id);
+    box.querySelectorAll('.fb-btn').forEach(b => {
+        const on = b.dataset.vote === v;
+        b.classList.toggle('is-on', on);
+        b.setAttribute('aria-pressed', String(on));
+        b.querySelector('i').className = `${on ? 'fa-solid' : 'fa-regular'} fa-thumbs-${b.dataset.vote}`;
+    });
+    box.querySelector('.feedback-msg').textContent = v ? 'Спасибо за отзыв! Нажмите ещё раз, чтобы отменить.' : '';
+}
+
+/* ---------- «Похожие статьи» и «Предыдущая / следующая» ---------- */
+// баллы: общий тег = 3, одна категория = 2, прямая ссылка между статьями = 4 (в каждую сторону)
+function getRelatedArticles(article, limit = 3) {
+    const myTags = article.tags.map(t => t.toLowerCase());
+    const scored = [];
+    WIKI_DATA.articles.forEach(other => {
+        if (other.id === article.id) return;
+        let score = other.tags.filter(t => myTags.includes(t.toLowerCase())).length * 3;
+        if (other.categoryId === article.categoryId) score += 2;
+        if (ARTICLE_LINKS[article.id] && ARTICLE_LINKS[article.id].has(other.id)) score += 4;
+        if (ARTICLE_LINKS[other.id] && ARTICLE_LINKS[other.id].has(article.id)) score += 4;
+        if (score > 0) scored.push({ a: other, score });
+    });
+    scored.sort((x, y) => y.score - x.score || parseRuDate(y.a.updatedAt) - parseRuDate(x.a.updatedAt));
+    return scored.slice(0, limit).map(o => o.a);
+}
+
+function relatedHtml(article) {
+    const rel = getRelatedArticles(article, 3);
+    if (!rel.length) return '';
+    return `
+        <section class="related-block">
+            <div class="section-title"><i class="fa-solid fa-link"></i> Похожие статьи</div>
+            ${renderArticlesAsGrid(rel)}
+        </section>`;
+}
+
+// порядок чтения: категории как в боковом меню, внутри категории - как в articles.js
+function getReadingOrder() {
+    const catIdx = id => {
+        const i = WIKI_DATA.categories.findIndex(c => c.id === id);
+        return i < 0 ? 999 : i;
+    };
+    return WIKI_DATA.articles
+        .map((a, i) => ({ a, i }))
+        .sort((x, y) => catIdx(x.a.categoryId) - catIdx(y.a.categoryId) || x.i - y.i)
+        .map(o => o.a);
+}
+
+function prevNextHtml(article) {
+    const order = getReadingOrder();
+    const i = order.findIndex(a => a.id === article.id);
+    const prev = i > 0 ? order[i - 1] : null;
+    const next = i >= 0 && i < order.length - 1 ? order[i + 1] : null;
+    if (!prev && !next) return '';
+
+    const card = (a, dir) => {
+        if (!a) return '<span class="pn-empty"></span>';
+        const cat = WIKI_DATA.categories.find(c => c.id === a.categoryId);
+        const label = dir === 'prev'
+            ? '<i class="fa-solid fa-arrow-left"></i> Предыдущая'
+            : 'Следующая <i class="fa-solid fa-arrow-right"></i>';
+        return `
+            <a href="#/article/${encodeURIComponent(a.id)}" class="pn-card pn-${dir}" onclick="event.preventDefault(); navigateTo('article', '${a.id}')">
+                <span class="pn-label">${label}</span>
+                <span class="pn-title">${escapeHtml(a.title)}</span>
+                ${cat ? `<span class="pn-cat">${escapeHtml(cat.name)}</span>` : ''}
+            </a>`;
+    };
+    return `<nav class="pn-nav" aria-label="Соседние статьи">${card(prev, 'prev')}${card(next, 'next')}</nav>`;
+}
+
+/* ---------- страница «Мои закладки» ---------- */
+function bookmarksListHtml() {
+    const list = getBookmarks().map(articleById);
+    if (!list.length) {
+        return `
+            <div class="empty-state">
+                <i class="fa-regular fa-bookmark"></i>
+                <p>Пока пусто. Нажмите на закладку в карточке или на странице статьи, чтобы сохранить её сюда.</p>
+                <button type="button" class="link-btn" onclick="navigateTo('home')"><i class="fa-solid fa-house"></i> На главную</button>
+            </div>`;
+    }
+    return `
+        <div class="bm-toolbar">
+            <span>Сохранено: ${list.length}</span>
+            <button type="button" class="link-btn" onclick="clearBookmarks()"><i class="fa-regular fa-trash-can"></i> Очистить все</button>
+        </div>
+        ${renderArticlesAsGrid(list)}`;
+}
+
+function markNavigable(root) {
+    root.querySelectorAll('.category-card, .article-card, .article-list-item').forEach(el => {
+        el.tabIndex = 0;
+        el.setAttribute('role', 'link');
+        el.dataset.nav = '1';
+    });
+}
+
+function renderBookmarksInPlace() {
+    const box = document.getElementById('bookmarksList');
+    if (!box) return;
+    box.innerHTML = bookmarksListHtml();
+    markNavigable(box);
+}
+
+function renderBookmarksPage(container) {
+    container.innerHTML = `
+        <div class="container-narrow">
+            <div class="article-breadcrumb">
+                <a href="#" onclick="event.preventDefault(); navigateTo('home')">Wiki</a> /
+                <span>Закладки</span>
+            </div>
+            <div class="article-header">
+                <h1><i class="fa-solid fa-bookmark" style="color:var(--accent); margin-right:0.5rem"></i> Мои закладки</h1>
+                <div class="article-subtitle">Закладки и история хранятся только в этом браузере.</div>
+            </div>
+            <div id="bookmarksList">${bookmarksListHtml()}</div>
+            ${historyBlockHtml(10)}
+        </div>
+    `;
 }
 
 /* ==================== РЕНДЕР СИДЕБАРА ==================== */
+/* ==================== КАРТА МИРА (squaremap) ==================== */
+const MAP_URL = 'http://135.125.188.210:32784';
+
+// Если сайт открыт по HTTPS, а карта по HTTP — браузер заблокирует iframe (mixed content)
+function isMapBlocked() {
+    return location.protocol === 'https:' && /^http:\/\//i.test(MAP_URL);
+}
+
+// iframe живёт отдельно от #mainContent (при переносе в DOM он бы перезагрузился),
+// создаётся один раз и только показывается/скрывается
+function ensureMapFrame() {
+    if (isMapBlocked() || document.getElementById('mapHost')) return;
+    const host = document.createElement('div');
+    host.id = 'mapHost';
+    host.innerHTML = `
+        <iframe class="map-frame" src="${MAP_URL}" title="Карта мира" allowfullscreen></iframe>`;
+    document.body.appendChild(host);
+}
+
+function renderMapPage(container) {
+    if (isMapBlocked()) {
+        container.innerHTML = `
+        <div class="map-page map-blocked">
+            <div class="empty-state">
+                <i class="fa-solid fa-lock"></i>
+                <p>Сайт открыт по HTTPS, а карта работает по HTTP, поэтому браузер не даёт встроить её сюда. Откройте карту в новой вкладке.</p>
+                <a class="map-open-btn" href="${MAP_URL}" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square"></i> Открыть карту</a>
+            </div>
+        </div>`;
+        return;
+    }
+    ensureMapFrame();
+    container.innerHTML = '<div class="map-page"></div>';
+    document.body.classList.add('map-ready');
+}
+
 function renderSidebar() {
     const menu = document.getElementById('sidebarMenu');
     let html = '';
 
     WIKI_DATA.categories.forEach(cat => {
-        const isActive = state.currentPage === 'category' && state.currentParam === cat.id;
+        const artCat = state.currentPage === 'article' ? (WIKI_DATA.articles.find(a => a.id === state.currentParam) || {}).categoryId : null;
+        const isActive = (state.currentPage === 'category' && state.currentParam === cat.id) || artCat === cat.id;
         html += `
             <li class="sidebar-item ${isActive ? 'active' : ''}">
                 <a href="#" onclick="event.preventDefault(); navigateTo('category', '${cat.id}')">
@@ -802,9 +1203,10 @@ function renderSidebar() {
     menu.innerHTML = html;
 }
 
-/* ==================== РЕНДЕР КОНТЕНТА ==================== */
+/* ==================== РЕНДЕР КОНТЕНТА С АНИМАЦИЕЙ ==================== */
 function renderContent() {
     const container = document.getElementById('mainContent');
+    
     container.innerHTML = `<div id="animatedWrapper" class="page-animated"></div>`;
     const wrapper = document.getElementById('animatedWrapper');
 
@@ -816,21 +1218,57 @@ function renderContent() {
         renderArticlePage(wrapper, state.currentParam);
     } else if (state.currentPage === 'search') {
         renderSearchPage(wrapper, state.currentParam);
+    } else if (state.currentPage === 'bookmarks') {
+        renderBookmarksPage(wrapper);
+    } else if (state.currentPage === 'map') {
+        renderMapPage(wrapper);
     }
+
+    markNavigable(wrapper);
 }
 
-function getArticleMediaHtml(article, size = 48) {
+function getArticleMediaHtml(article) {
     if (article.image) {
-        return `<img src="${article.image}" alt="${article.title}" style="width: ${size}px; height: ${size}px; object-fit: contain; border-radius: 6px; flex-shrink: 0;">`;
+        return `<div class="article-card-media"><img src="${article.image}" alt="${escapeHtml(article.title)}" loading="lazy" decoding="async"></div>`;
     } else if (article.icon) {
-        return `<div style="width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 6px; flex-shrink: 0; font-size: ${size * 0.45}px; color: var(--accent);"><i class="fa-solid ${article.icon}"></i></div>`;
+        return `<div class="article-card-media"><i class="fa-solid ${article.icon}"></i></div>`;
     }
-    return `<div style="width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 6px; flex-shrink: 0; font-size: ${size * 0.45}px; color: var(--accent);"><i class="fa-regular fa-file-lines"></i></div>`;
+    return `<div class="article-card-media"><i class="fa-regular fa-file-lines"></i></div>`;
+}
+
+function renderArticlesAsGrid(articles) {
+    if (!articles || articles.length === 0) {
+        return `<p style="color: var(--text-muted)">В этой категории пока нет статей.</p>`;
+    }
+
+    return `
+        <div class="articles-grid">
+            ${articles.map(a => `
+                <div class="article-card" onclick="navigateTo('article', '${a.id}')">
+                    <div class="article-card-header">
+                        ${getArticleMediaHtml(a)}
+                        <div class="article-card-title">${a.title}</div>
+                    </div>
+                    <div class="article-card-desc">${a.subtitle}</div>
+                    <div class="article-card-footer">
+                        <div class="card-meta">
+                            <span>Обновлено: ${a.updatedAt}</span>
+                            <span><i class="fa-regular fa-clock"></i> ~${a._read} мин</span>
+                        </div>
+                        <div class="card-actions">
+                            ${bookmarkBtnHtml(a.id)}
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
 }
 
 function renderHomePage(container) {
     const popularArticles = WIKI_DATA.articles.filter(a => a.popular);
-    const recentArticles = [...WIKI_DATA.articles].sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 4);
+    const recentArticles = [...WIKI_DATA.articles].sort((a,b) => parseRuDate(b.updatedAt) - parseRuDate(a.updatedAt)).slice(0, 4);
 
     let categoriesHtml = WIKI_DATA.categories.map(cat => {
         const count = WIKI_DATA.articles.filter(a => a.categoryId === cat.id).length;
@@ -852,7 +1290,7 @@ function renderHomePage(container) {
                 <h1>Spatium Wiki</h1>
                 <p>Официальная база знаний нашего Minecraft-сервера. Изучайте механики, команды и правила проекта.</p>
                 <div class="hero-search">
-                    <input type="text" placeholder="Поиск по статьям..." onkeyup="handleHeroSearch(event)">
+                    <input type="text" placeholder="Поиск по статьям и руководствам..." onkeyup="handleHeroSearch(event)">
                     <i class="fa-solid fa-magnifying-glass"></i>
                 </div>
             </div>
@@ -861,6 +1299,8 @@ function renderHomePage(container) {
             <div class="categories-grid">
                 ${categoriesHtml}
             </div>
+
+            ${historyBlockHtml(4)}
 
             <div class="grid-two-col">
                 <div class="info-block">
@@ -911,19 +1351,6 @@ function renderCategoryPage(container, categoryId) {
         return;
     }
 
-    let articlesHtml = articles.length > 0 ? articles.map(a => `
-        <div class="search-result-card" onclick="navigateTo('article', '${a.id}')">
-            ${getArticleMediaHtml(a, 48)}
-            <div class="card-content">
-                <h3>${a.title}</h3>
-                <p>${a.subtitle}</p>
-                <div class="card-date">
-                    Обновлено: ${a.updatedAt}
-                </div>
-            </div>
-        </div>
-    `).join('') : `<p style="color: var(--text-muted)">В этой категории пока нет статей.</p>`;
-
     container.innerHTML = `
         <div class="container-narrow">
             <div class="article-breadcrumb">
@@ -934,9 +1361,7 @@ function renderCategoryPage(container, categoryId) {
                 <h1><i class="fa-solid ${category.icon}" style="color:var(--accent); margin-right:0.5rem"></i> ${category.name}</h1>
                 <div class="article-subtitle">${category.desc}</div>
             </div>
-            <div class="search-results-list">
-                ${articlesHtml}
-            </div>
+            ${renderArticlesAsGrid(articles)}
         </div>
     `;
 }
@@ -959,20 +1384,27 @@ function renderArticlePage(container, articleId) {
                     <span>${article.title}</span>
                 </div>
 
-                <div class="article-header article-header-flex">
-                    ${getArticleMediaHtml(article, 64)}
+                <div class="article-header" style="display: flex; align-items: center; gap: 1.25rem;">
+                    ${getArticleMediaHtml(article)}
                     <div>
                         <h1 style="margin: 0;">${article.title}</h1>
                         <div class="article-subtitle">${article.subtitle}</div>
                         <div class="article-meta">
                             <span><i class="fa-regular fa-calendar"></i> Обновлено: ${article.updatedAt}</span>
+                            <span><i class="fa-regular fa-clock"></i> ~${article._read} мин чтения</span>
+                            ${bookmarkBtnHtml(article.id, true)}
                         </div>
+                        ${article.tags.length ? `<div class="article-tags">${article.tags.map(t => `<button type="button" class="tag-chip" data-tag="${escapeHtml(t)}">#${escapeHtml(t)}</button>`).join('')}</div>` : ''}
                     </div>
                 </div>
 
                 <div class="wiki-body" id="wikiBody">
                     ${article.content}
                 </div>
+
+                ${feedbackHtml(article.id)}
+                ${relatedHtml(article)}
+                ${prevNextHtml(article)}
             </div>
 
             <div class="toc-sidebar">
@@ -983,6 +1415,7 @@ function renderArticlePage(container, articleId) {
     `;
 
     generateTOC();
+    addToHistory(article.id);
 }
 
 function generateTOC() {
@@ -992,8 +1425,8 @@ function generateTOC() {
 
     const headings = wikiBody.querySelectorAll('h2');
     if (headings.length === 0) {
-        const tocSidebar = document.querySelector('.toc-sidebar');
-        if (tocSidebar) tocSidebar.style.display = 'none';
+        const sidebar = document.querySelector('.toc-sidebar');
+        if (sidebar) sidebar.style.display = 'none';
         return;
     }
 
@@ -1006,58 +1439,89 @@ function generateTOC() {
     tocList.innerHTML = tocHtml;
 }
 
-function renderSearchPage(container, query) {
-    const cleanQuery = query.toLowerCase().trim();
-    const results = WIKI_DATA.articles.filter(a => 
-        a.title.toLowerCase().includes(cleanQuery) || 
-        a.subtitle.toLowerCase().includes(cleanQuery) ||
-        a.content.toLowerCase().includes(cleanQuery)
-    );
-
-    let resultsHtml = '';
-    if (results.length > 0) {
-        resultsHtml = results.map(a => `
-            <div class="search-result-card" onclick="navigateTo('article', '${a.id}')">
-                ${getArticleMediaHtml(a, 40)}
-                <div class="card-content">
-                    <h3>${a.title}</h3>
-                    <p>${a.subtitle}</p>
-                </div>
-            </div>
-        `).join('');
-    } else {
-        resultsHtml = `
-            <div class="no-results">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <h3>Ничего не найдено</h3>
-                <p>По запросу «<strong>${query}</strong>» ничего не удалось найти. Попробуйте изменить формулировку.</p>
-            </div>
-        `;
-    }
-
-    container.innerHTML = `
-        <div class="container-narrow">
-            <div class="search-results-header">
-                <h2>Результаты поиска: "${query}"</h2>
-                <p style="color: var(--text-muted)">Найдено материалов: ${results.length}</p>
-            </div>
-            <div class="search-results-list">
-                ${resultsHtml}
-            </div>
-        </div>
-    `;
-}
-
 function handleHeaderSearch(e) {
     if (e.key === 'Enter') {
-        const query = e.target.value;
-        if (query.trim()) navigateTo('search', query);
+        const val = e.target.value.trim();
+        if (val) navigateTo('search', val);
     }
 }
 
 function handleHeroSearch(e) {
     if (e.key === 'Enter') {
-        const query = e.target.value;
-        if (query.trim()) navigateTo('search', query);
+        const val = e.target.value.trim();
+        if (val) navigateTo('search', val);
     }
 }
+
+function renderSearchPage(container, query) {
+    const cleanQuery = query.toLowerCase().trim();
+    const results = WIKI_DATA.articles.filter(a => a._search.includes(cleanQuery));
+
+    let contentHtml = '';
+    if (results.length > 0) {
+        contentHtml = renderArticlesAsGrid(results);
+    } else {
+        contentHtml = `<p style="color: var(--text-muted); margin-top: 1rem;">Ничего не найдено по запросу "${escapeHtml(query)}".</p>`;
+    }
+
+    container.innerHTML = `
+        <div class="container-narrow">
+            <div class="article-breadcrumb">
+                <a href="#" onclick="event.preventDefault(); navigateTo('home')">Wiki</a> / 
+                <span>Поиск</span>
+            </div>
+            <div class="article-header">
+                <h1>Результаты поиска</h1>
+                <div class="article-subtitle">По запросу: "${escapeHtml(query)}"</div>
+            </div>
+            ${contentHtml}
+        </div>
+    `;
+}
+
+/* ==================== КЛАВИАТУРА, TOC, ЗАКРЫТИЕ ПАНЕЛЕЙ ==================== */
+document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            toggleColorPickerModal(false);
+            document.getElementById('sidebar').classList.remove('open');
+        }
+        if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-nav]')) {
+            e.preventDefault();
+            e.target.click();
+        }
+    });
+
+    document.getElementById('mainContent').addEventListener('click', (e) => {
+        const link = e.target.closest('.toc-list a');
+        if (!link) return;
+        e.preventDefault();
+        const target = document.getElementById(link.getAttribute('href').slice(1));
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // клик по тегу статьи -> поиск по этому тегу
+    document.getElementById('mainContent').addEventListener('click', (e) => {
+        const chip = e.target.closest('.tag-chip');
+        if (chip) navigateTo('search', chip.dataset.tag);
+    });
+
+    // закладки изменились в другой вкладке
+    window.addEventListener('storage', (e) => {
+        if (e.key !== LS_BOOKMARKS && e.key !== null) return;
+        syncBookmarkUI();
+        if (state.currentPage === 'bookmarks') renderBookmarksInPlace();
+    });
+
+    document.addEventListener('click', (e) => {
+        const sb = document.getElementById('sidebar');
+        if (sb.classList.contains('open') && !e.target.closest('#sidebar, #mobileMenuBtn')) {
+            sb.classList.remove('open');
+        }
+    });
+});
+
+/* ==================== ПАУЗА АНИМАЦИЙ В ФОНОВОЙ ВКЛАДКЕ ==================== */
+document.addEventListener('visibilitychange', () => {
+    document.body.classList.toggle('tab-hidden', document.hidden);
+});
