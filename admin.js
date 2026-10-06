@@ -1305,7 +1305,7 @@
             ['success', ico('solid fa-lightbulb', 'Совет')], ['danger', ico('solid fa-circle-exclamation', 'Опасно')]]],
         ['Медиа', [
             ['img', ico('regular fa-image', 'Картинка')], ['gallery', ico('solid fa-images', 'Галерея')],
-            ['video', ico('solid fa-film', 'Видео')], ['audio', ico('solid fa-volume-high', 'Аудио')], ['icon', ico('solid fa-icons', 'Иконка')]]],
+            ['video', ico('solid fa-film', 'Видео')], ['audio', ico('solid fa-volume-high', 'Аудио')], ['model', ico('solid fa-cube', '3D-модель Blockbench')], ['icon', ico('solid fa-icons', 'Иконка')]]],
         ['Ссылки', [
             ['url', ico('solid fa-link'), 'Ссылка (Ctrl+K)'], ['btn', ico('solid fa-hand-pointer', 'Кнопка')], ['seealso', ico('solid fa-diagram-project', 'Смотрите также')]]]
     ];
@@ -1772,6 +1772,21 @@
                     fld('Ссылка или путь к файлу', inp('url', '', 'video/clip.mp4 — или ссылка YouTube / Vimeo / RuTube')) +
                     `<div class="adm-hint">Можно просто путь к файлу в папке сайта (например <code>video/clip.mp4</code>) или ссылку. Сам файл положи в эту папку на хостинге — в редактор он не загружается.</div>`,
                     o => { const h = embedVideo(o.url); if (!h) { toast('Укажи путь к файлу (video/clip.mp4) или ссылку YouTube/Vimeo/RuTube'); return false; } insertBlock(ta, h); });
+                break;
+
+            case 'model':
+                dialog('3D-модель Blockbench',
+                    fld('Путь к файлу', inp('src', 'models/', 'models/sword.bbmodel')) +
+                    `<div class="adm-grid">${fld('Подпись', inp('caption'))}
+                     ${fld('Высота окна, px', inp('height', '', '360'))}</div>` +
+                    fld('Автовращение', selHtml('auto', [['true', 'Включено'], ['false', 'Выключено']], 'true')) +
+                    `<div class="adm-hint">Положи файл <code>.bbmodel</code> (или <code>.glb</code>) в папку <code>models/</code> рядом с сайтом. Скачать модель посетители не смогут — только вращать и смотреть. Предпросмотр заработает, когда файл лежит на хостинге.</div>`,
+                    o => {
+                        const p = o.src.trim();
+                        if (!p || p === 'models/') { toast('Укажи путь к файлу модели'); return false; }
+                        const h = parseInt(o.height, 10);
+                        insertBlock(ta, `<div class="bb-model" data-src="${esc(p)}"${o.caption.trim() ? ` data-caption="${esc(o.caption.trim())}"` : ''}${h ? ` data-height="${h}"` : ''}${o.auto === 'false' ? ' data-autorotate="false"' : ''}></div>`);
+                    });
                 break;
 
             case 'audio':

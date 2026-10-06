@@ -1761,3 +1761,34 @@ body:not(.safe-reveal) .wiki-btn:active { transform: translateY(2px); }
     .hero h1 { animation: none !important; }
     .read-progress { display: none; }
 }
+
+/* ==================== 3D-МОДЕЛИ BLOCKBENCH В СТАТЬЯХ ==================== */
+.bb-model { position: relative; margin: 1.4rem 0; min-height: 120px; border: 2px solid var(--border-color); background: var(--bg-surface); box-shadow: 0 4px 0 var(--pixel-shadow); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overflow: hidden; }
+.bb-stage { position: relative; height: var(--bb-h, 360px); cursor: grab; background: radial-gradient(ellipse at 50% 40%, var(--accent-glow), transparent 70%); }
+.bb-stage.dragging { cursor: grabbing; }
+.bb-stage canvas { display: block; width: 100%; height: 100%; outline: none; image-rendering: pixelated; }
+.bb-status { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; padding: 1rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; pointer-events: none; }
+.bb-status i { font-size: 1.8rem; color: var(--accent); animation: bbPulse 1.2s steps(4) infinite; }
+.bb-status.error i { animation: none; }
+.bb-status[hidden], .bb-toolbar[hidden], .bb-hint[hidden] { display: none; }
+@keyframes bbPulse { 50% { opacity: 0.35; } }
+
+.bb-toolbar { position: absolute; top: 0.6rem; right: 0.6rem; display: flex; gap: 0.35rem; }
+.bb-btn { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--border-color); background: var(--bg-surface-hover); color: var(--text-secondary); cursor: pointer; font-size: 0.85rem; padding: 0; box-shadow: 0 3px 0 var(--pixel-shadow); }
+.bb-btn:hover { color: var(--accent); border-color: var(--border-focus); }
+.bb-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--pixel-shadow); }
+.bb-btn[hidden] { display: none; }
+
+.bb-hint { position: absolute; left: 0.6rem; bottom: 0.6rem; padding: 0.25rem 0.55rem; font-size: 0.75rem; color: var(--text-secondary); background: var(--bg-surface-hover); border: 1px solid var(--border-color); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.bb-hint.show { opacity: 1; }
+.bb-caption { padding: 0.6rem 0.9rem; border-top: 2px solid var(--border-color); font-size: 0.88rem; color: var(--text-secondary); text-align: center; }
+
+.bb-model.bb-full { display: flex; flex-direction: column; margin: 0; border: 0; background: var(--bg-base, #14161b); }
+.bb-model.bb-full .bb-stage { flex: 1; height: auto; }
+.bb-model:fullscreen { background: var(--bg-base, #14161b); }
+
+@media (max-width: 600px) {
+    .bb-stage { height: min(var(--bb-h, 360px), 70vh); }
+}
+@media (prefers-reduced-motion: reduce) { .bb-status i { animation: none; } }
+body.epilepsy-safe .bb-status i { animation: none; }

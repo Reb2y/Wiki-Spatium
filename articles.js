@@ -1,8 +1,10 @@
 /* =====================================================================
    Spatium Wiki — БАЗА СТАТЕЙ
    Этот файл подключается в index.html ПЕРЕД script.js.
+   Файл создан админ-панелью (F12 → Console → admin()), но его можно
+   редактировать и вручную.
 
-   Как добавить статью: скопируйте любой объект в массиве articles и измените:
+   Поля статьи:
      id          — уникальный латинский идентификатор (для ссылок)
      categoryId  — id категории из списка categories ниже
      title / subtitle — заголовок и короткое описание
@@ -11,7 +13,7 @@
      popular     — true, чтобы статья попала в «Популярные»
      tags        — (необязательно) теги для «Похожих статей» и поиска: ["крафт", "руды"]
      content     — HTML статьи (заголовки <h2> попадут в оглавление)
-   Ссылка на другую статью: 
+   Ссылка на другую статью:
      <a href="#" onclick="event.preventDefault(); navigateTo('article', 'id-статьи')">текст</a>
    ===================================================================== */
 
@@ -298,6 +300,22 @@ const WIKI_DATA = {
                     <i class="fa-solid fa-lightbulb"></i>
                     <div><strong>Совет:</strong> Открывайте ежедневные награды с помощью команды <code>/bonus</code>!</div>
                 </div>
+            `
+        },
+        {
+            id: "fdsfdssdf",
+            categoryId: "getting-started",
+            title: "fdsfdssdf",
+            subtitle: "",
+            icon: "fa-file-lines",
+            updatedAt: "6 Окт 2026",
+            popular: false,
+            content: `
+                <p>Текст статьи…</p>
+
+                <h2>Первый раздел</h2>
+                <p></p>
+                <div class="bb-model" data-src="models/drone.bbmodel"></div>
             `
         }
     ]
