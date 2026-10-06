@@ -87,7 +87,9 @@ const SAFE_OPTIONS = [
     { id: 'consolefx',  name: 'Глитч на кнопке «В консоль»',  desc: 'Без дрожания и мерцания при наведении' },
     { id: 'glowmotion', name: 'Движение свечения',            desc: 'Фоновое свечение почти не двигается' },
     { id: 'glowdim',    name: 'Яркость свечения',             desc: 'Свечение тусклее и размытее' },
-    { id: 'loader',     name: 'Анимации загрузки',            desc: 'Спати просто заполняется вместо сценок' }
+    { id: 'loader',     name: 'Анимации загрузки',            desc: 'Спати просто заполняется вместо сценок' },
+    { id: 'navicons',   name: 'Анимированные значки шапки',   desc: '«Главная», «Закладки», «Карта» без движения' },
+    { id: 'reveal',     name: 'Анимации появления',           desc: 'Карточки и блоки не выезжают при прокрутке, без «прыжков» при наведении' }
 ];
 
 function readSafeOpts() {
@@ -900,6 +902,12 @@ function toggleBookmark(id, ev) {
     lsWrite(LS_BOOKMARKS, list);
     playSelectSound();
     syncBookmarkUI();
+    if (i < 0 && motionAllowed()) { // «поп» значка при добавлении
+        document.querySelectorAll(`[data-bm-id="${id}"] i`).forEach(ic => {
+            ic.classList.remove('bm-pop'); void ic.offsetWidth; ic.classList.add('bm-pop');
+            ic.addEventListener('animationend', () => ic.classList.remove('bm-pop'), { once: true });
+        });
+    }
     if (state.currentPage === 'bookmarks') renderBookmarksInPlace();
 }
 
@@ -1225,6 +1233,83 @@ function renderContent() {
     }
 
     markNavigable(wrapper);
+    initReveal(wrapper);
+    initReadProgress();
+}
+
+/* ==================== АНИМАЦИИ ПОЯВЛЕНИЯ ПРИ ПРОКРУТКЕ ==================== */
+let revealObserver = null;
+const REVEAL_SELECTOR = [
+    '.hero > *', '.article-breadcrumb', '.article-header', '.section-title',
+    '.category-card', '.article-card', '.info-block', '.article-list-item',
+    '.wiki-body > *', '.feedback-block', '.pn-card', '.empty-state', '.bm-toolbar'
+].join(',');
+
+function motionAllowed() {
+    return !safeOn('reveal') && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
+function initReveal(root) {
+    if (revealObserver) { revealObserver.disconnect(); revealObserver = null; }
+    if (!motionAllowed() || !('IntersectionObserver' in window)) return;
+
+    const items = [...root.querySelectorAll(REVEAL_SELECTOR)];
+    // номер внутри своего родителя -> каскадная задержка (не больше 8 шагов)
+    const counters = new Map();
+    items.forEach(el => {
+        const n = counters.get(el.parentNode) || 0;
+        counters.set(el.parentNode, n + 1);
+        el.style.setProperty('--rv-d', Math.min(n, 8) * 55 + 'ms');
+        el.classList.add('rv');
+    });
+
+    revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+            const el = entry.target;
+            revealObserver.unobserve(el);
+            el.classList.add('rv-in');
+            // после показа убираем служебные классы, чтобы не мешать hover-эффектам
+            const done = () => {
+                el.classList.remove('rv', 'rv-in');
+                el.style.removeProperty('--rv-d');
+            };
+            el.addEventListener('transitionend', function te(e) {
+                if (e.propertyName !== 'opacity') return;
+                el.removeEventListener('transitionend', te);
+                done();
+            });
+            setTimeout(done, 1400); // запасной вариант
+        });
+    }, { threshold: 0.08, rootMargin: '0px 0px -6% 0px' });
+
+    items.forEach(el => revealObserver.observe(el));
+}
+
+/* ==================== ПОЛОСА ПРОГРЕССА ЧТЕНИЯ ==================== */
+function initReadProgress() {
+    let bar = document.getElementById('readProgress');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'readProgress';
+        bar.className = 'read-progress';
+        bar.innerHTML = '<div class="read-progress-fill"></div>';
+        document.body.appendChild(bar);
+        let ticking = false;
+        const update = () => {
+            ticking = false;
+            const on = state.currentPage === 'article' && motionAllowed();
+            bar.classList.toggle('active', on);
+            if (!on) return;
+            const h = document.documentElement.scrollHeight - window.innerHeight;
+            const p = h > 0 ? Math.min(1, Math.max(0, window.scrollY / h)) : 0;
+            bar.firstElementChild.style.transform = `scaleX(${p})`;
+        };
+        window.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+        window.addEventListener('resize', update);
+        bar._update = update;
+    }
+    bar._update();
 }
 
 function getArticleMediaHtml(article) {
